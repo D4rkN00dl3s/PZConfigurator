@@ -1,0 +1,102 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:PZConfigurator.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="600"
+        x:Class="PZConfigurator.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="{Binding Title}"
+        Width="920" Height="680">
+
+    <Design.DataContext>
+        <vm:MainViewModel />
+    </Design.DataContext>
+
+    <DockPanel Margin="10">
+        <StackPanel DockPanel.Dock="Bottom">
+            <TextBlock Text="{Binding Status}" Margin="0,6,0,0"
+                       Foreground="SlateGray" TextWrapping="Wrap" />
+        </StackPanel>
+
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,Auto,*,Auto" Margin="0,0,0,8">
+            <TextBlock Text="Server:" VerticalAlignment="Center" Margin="0,0,8,0" />
+            <ComboBox Grid.Column="1" MinWidth="220"
+                      ItemsSource="{Binding Servers}"
+                      SelectedItem="{Binding SelectedServer}" />
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" Margin="8,0,0,0">
+                <Button Content="Refresh" Command="{Binding RefreshServerListCommand}" />
+                <Button Content="Browse..." x:Name="BrowseBtn" Click="Browse_Click" />
+                <TextBlock Text="{Binding Folder}" VerticalAlignment="Center" Margin="8,0,0,0"
+                           Foreground="SlateGray" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+            <Button Grid.Column="3" Content="Save"
+                    Command="{Binding SaveCommand}"
+                    IsEnabled="{Binding IsDirty}" />
+        </Grid>
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <TextBox Grid.Row="0" PlaceholderText="Search settings..." Text="{Binding SearchText}" Margin="0,0,0,8" />
+
+            <ScrollViewer Grid.Row="1">
+                <ItemsControl ItemsSource="{Binding Groups}" Margin="0,0,10,0">
+                    <ItemsControl.DataTemplates>
+                        <DataTemplate DataType="vm:SettingGroupVM">
+                            <StackPanel Spacing="6" Margin="0,8,0,12">
+                                <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="16" />
+                                <Border HorizontalAlignment="Stretch" BorderBrush="Gray" BorderThickness="0,1,0,0" Margin="0,0,0,4" />
+                                <ItemsControl ItemsSource="{Binding Items}">
+                                    <ItemsControl.DataTemplates>
+                                        <DataTemplate DataType="vm:BoolSettingVM">
+                                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2" IsVisible="{Binding IsVisible}">
+                                                <TextBlock Text="{Binding Label}" Width="420" TextWrapping="Wrap"
+                                                           VerticalAlignment="Center"
+                                                           ToolTip.Tip="{Binding Tooltip}" />
+                                                <CheckBox IsChecked="{Binding IsChecked}" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                        <DataTemplate DataType="vm:EnumSettingVM">
+                                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2" IsVisible="{Binding IsVisible}">
+                                                <TextBlock Text="{Binding Label}" Width="420" TextWrapping="Wrap"
+                                                           VerticalAlignment="Center"
+                                                           ToolTip.Tip="{Binding Tooltip}" />
+                                                <ComboBox MinWidth="220" ItemsSource="{Binding Items}"
+                                                          SelectedIndex="{Binding SelectedIndex}" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                        <DataTemplate DataType="vm:NumberSettingVM">
+                                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2" IsVisible="{Binding IsVisible}">
+                                                <TextBlock Text="{Binding Label}" Width="420" TextWrapping="Wrap"
+                                                           VerticalAlignment="Center"
+                                                           ToolTip.Tip="{Binding Tooltip}" />
+                                                <NumericUpDown Width="120" Value="{Binding NumberValue}" FormatString="0.0######"
+                                                               Minimum="{Binding MinValue}" Maximum="{Binding MaxValue}"
+                                                               VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                        <DataTemplate DataType="vm:TextSettingVM">
+                                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2" IsVisible="{Binding IsVisible}">
+                                                <TextBlock Text="{Binding Label}" Width="420" TextWrapping="Wrap"
+                                                           VerticalAlignment="Center"
+                                                           ToolTip.Tip="{Binding Tooltip}" />
+                                                <TextBox Width="340" Text="{Binding Text}"
+                                                         IsReadOnly="{Binding IsReadOnly}"
+                                                         ToolTip.Tip="{Binding Tooltip}" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.DataTemplates>
+                                </ItemsControl>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.DataTemplates>
+                </ItemsControl>
+            </ScrollViewer>
+        </Grid>
+    </DockPanel>
+</Window>

@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="PZConfigurator.Tests/PZConfigurator.Tests.csproj" />
+  <Project Path="PZConfigurator/PZConfigurator.csproj" />
+</Solution>
