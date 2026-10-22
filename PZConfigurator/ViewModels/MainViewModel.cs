@@ -11,7 +11,8 @@ public partial class MainViewModel : ViewModelBase
     public const string DefaultFolderName = "Zomboid"; // under the user profile
 
     public ObservableCollection<string> Servers { get; } = [];
-    public ObservableCollection<SettingGroupVM> Groups { get; } = [];
+    public ObservableCollection<SettingGroupVM> IniGroups { get; } = [];
+    public ObservableCollection<SettingGroupVM> SandboxGroups { get; } = [];
 
     [ObservableProperty]
     private string _folder = Path.Combine(
@@ -84,7 +85,8 @@ public partial class MainViewModel : ViewModelBase
 
     private void Load()
     {
-        Groups.Clear();
+        IniGroups.Clear();
+        SandboxGroups.Clear();
         _files = [];
         IsDirty = false;
         Title = "PZConfigurator";
@@ -95,22 +97,15 @@ public partial class MainViewModel : ViewModelBase
             var markDirty = () => { if (!IsDirty) { IsDirty = true; Title = "PZConfigurator *"; } };
             var iniPath = Path.Combine(Folder, SelectedServer + ".ini");
             var luaPath = Path.Combine(Folder, SelectedServer + "_SandboxVars.lua");
-            var files = new[] { ConfigParser.LoadIni(iniPath), ConfigParser.LoadLua(luaPath) };
+            var ini = ConfigParser.LoadIni(iniPath);
+            var lua = ConfigParser.LoadLua(luaPath);
+            _files = [ini, lua];
 
-            foreach (var f in files)
-            {
-                _files.Add(f);
-                foreach (var g in f.Groups)
-                {
-                    Groups.Add(new SettingGroupVM
-                    {
-                        Name = g.Name,
-                        Items = g.Settings.Select(s => SettingVMFactory.Create(f, s, markDirty)).ToList(),
-                    });
-                }
-            }
+            BuildGroups(ini, ini.Groups, IniGroups, CategoryMap.IniOrder, isIni: true, markDirty);
+            BuildGroups(lua, lua.Groups, SandboxGroups, CategoryMap.SandboxOrder, isIni: false, markDirty);
+
             Status = $"Loaded {SelectedServer}: "
-                + files.Sum(f => f.Settings.Count()) + " settings";
+                + (ini.Settings.Count() + lua.Settings.Count()) + " settings";
             ApplyFilter();
         }
         catch (Exception ex)
@@ -119,15 +114,43 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
+    private void BuildGroups(
+        ConfigFile file, IEnumerable<SettingGroup> source,
+        ObservableCollection<SettingGroupVM> target, string[] order,
+        bool isIni, Action markDirty)
+    {
+        var byCategory = new Dictionary<string, List<Setting>>();
+        foreach (var group in source)
+        {
+            foreach (var s in group.Settings)
+            {
+                var cat = isIni
+                    ? CategoryMap.ResolveIni(s.Key)
+                    : CategoryMap.ResolveLua(group.Name, s.Key);
+                if (!byCategory.TryGetValue(cat, out var list))
+                    byCategory[cat] = list = [];
+                list.Add(s);
+            }
+        }
+
+        foreach (var cat in order.Where(byCategory.ContainsKey))
+        {
+            target.Add(new SettingGroupVM
+            {
+                Name = cat,
+                Items = byCategory[cat].Select(s => SettingVMFactory.Create(file, s, markDirty)).ToList(),
+            });
+        }
+    }
+
     partial void OnSearchTextChanged(string value) => ApplyFilter();
 
     private void ApplyFilter()
     {
         var q = SearchText?.Trim();
-        foreach (var group in Groups)
+        foreach (var group in IniGroups.Concat(SandboxGroups))
             foreach (var item in group.Items)
                 item.IsVisible = string.IsNullOrEmpty(q)
-                    || item.Label.Contains(q, StringComparison.OrdinalIgnoreCase)
                     || item.Key.Contains(q, StringComparison.OrdinalIgnoreCase);
     }
 

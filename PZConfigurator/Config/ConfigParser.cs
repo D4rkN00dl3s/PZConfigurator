@@ -78,6 +78,7 @@ public static partial class ConfigParser
         groups.Add(current);
         // depth 1 = SandboxVars root; nesting beyond that opens a named section group
         var depth = 0;
+        var stack = new List<SettingGroup>(); // open sections
         var comments = new List<string>();
 
         for (var i = 0; i < lines.Count; i++)
@@ -98,14 +99,18 @@ public static partial class ConfigParser
                 depth++;
                 if (depth > 1) // "SandboxVars = {" itself is the root, not a group
                 {
-                    current = new SettingGroup { Name = open, Settings = [] };
-                    groups.Add(current);
+                    var group = new SettingGroup { Name = open, Settings = [] };
+                    groups.Add(group);
+                    stack.Add(group);
+                    current = group;
                 }
                 continue;
             }
             if (trimmed.StartsWith('}'))
             {
                 depth = Math.Max(0, depth - 1);
+                if (stack.Count > 0) stack.RemoveAt(stack.Count - 1);
+                current = stack.Count > 0 ? stack[^1] : groups[0];
                 continue;
             }
 
