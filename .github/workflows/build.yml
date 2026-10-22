@@ -1,0 +1,58 @@
+name: build
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    strategy:
+      matrix:
+        include:
+          - { os: ubuntu-latest, rid: linux-x64 }
+          - { os: ubuntu-latest, rid: osx-x64 }
+          - { os: ubuntu-latest, rid: osx-arm64 }
+          - { os: windows-latest, rid: win-x64 }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Run tests
+        run: dotnet test PZConfigurator.Tests
+
+      - name: Publish (${{ matrix.rid }})
+        run: >
+          dotnet publish PZConfigurator -c Release -r ${{ matrix.rid }}
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:EnableCompressionInSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:DebugType=embedded
+
+      - name: Clean stray native pdbs
+        if: runner.os != 'Windows'
+        run: rm -f PZConfigurator/bin/Release/net10.0/${{ matrix.rid }}/publish/*.pdb
+      - name: Clean stray native pdbs (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Remove-Item PZConfigurator/bin/Release/net10.0/${{ matrix.rid }}/publish/*.pdb -ErrorAction SilentlyContinue
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PZConfigurator-${{ matrix.rid }}
+          path: PZConfigurator/bin/Release/net10.0/${{ matrix.rid }}/publish/
+
+      - name: Attach to GitHub Release (on tags)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: PZConfigurator/bin/Release/net10.0/${{ matrix.rid }}/publish/*

@@ -24,4 +24,15 @@ dotnet test                           # tests (round-trip + save safety on captu
 
 Layout: `PZConfigurator/Config` (parsers, category map), `ViewModels/` (picker, filtering, editors), `Views/` (UI), `PZConfigurator.Tests/`.
 
+## Building & releases
+
+Self-contained single-file binaries (no .NET install needed for users):
+
+```sh
+.\publish.ps1                     # win-x64, linux-x64, osx-x64, osx-arm64
+.\publish.ps1 -Runtimes win-x64   # just one target
+```
+
+Output: `PZConfigurator/bin/Release/net10.0/<rid>/publish/` (~48 MB per target). Pushing a tag like `v1.0.0` triggers the GitHub Actions workflow, which runs tests and attaches all four platform builds to a GitHub Release.
+
 Known limits: `Mods=` is a plain text field; settings the parsers can't classify appear as text boxes or under "Other".
