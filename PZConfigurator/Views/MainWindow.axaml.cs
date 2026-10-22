@@ -26,7 +26,12 @@ public partial class MainWindow : Window
         {
             e.Cancel = true;
             if (await ConfirmWindow.ShowAsync(this))
-                Close(); // IsDirty stays true but nobody reads it after close
+            {
+                // clear dirty state so the re-entrant Close isn't cancelled again
+                vm.IsDirty = false;
+                vm.Title = "PZConfigurator";
+                Close();
+            }
         }
         base.OnClosing(e);
     }
