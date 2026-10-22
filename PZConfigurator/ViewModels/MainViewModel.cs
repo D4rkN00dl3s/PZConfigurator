@@ -15,6 +15,12 @@ public partial class MainViewModel : ViewModelBase
     public ObservableCollection<SettingGroupVM> SandboxGroups { get; } = [];
 
     [ObservableProperty]
+    private SettingGroupVM? _iniSelected;
+
+    [ObservableProperty]
+    private SettingGroupVM? _sandboxSelected;
+
+    [ObservableProperty]
     private string _folder = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), DefaultFolderName, "Server");
 
@@ -103,6 +109,8 @@ public partial class MainViewModel : ViewModelBase
 
             BuildGroups(ini, ini.Groups, IniGroups, CategoryMap.IniOrder, isIni: true, markDirty);
             BuildGroups(lua, lua.Groups, SandboxGroups, CategoryMap.SandboxOrder, isIni: false, markDirty);
+            IniSelected = IniGroups.FirstOrDefault();
+            SandboxSelected = SandboxGroups.FirstOrDefault();
 
             Status = $"Loaded {SelectedServer}: "
                 + (ini.Settings.Count() + lua.Settings.Count()) + " settings";

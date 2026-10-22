@@ -5,7 +5,7 @@ Cross-platform desktop GUI for editing **Project Zomboid** server settings (Aval
 ## What it does
 
 - Lists servers found in `%USERPROFILE%\Zomboid\Server` (any folder selectable via Browse). A server = `name.ini` + `name_SandboxVars.lua`.
-- Two tabs: **Server (ini)** and **Sandbox**, settings grouped into categories (Details, Map, PVP, Zombie, World, Loot, ... — grouping authored by this app since the files don't carry it).
+- Two tabs: **Server (ini)** and **Sandbox**. Each tab has a category list on the left (Details, Map, PVP, Zombie, World, Loot, ... — grouping authored by this app since the files don't carry it); clicking a category shows only its settings on the right, inputs aligned to the right edge.
 - Bools → checkboxes, enums (from comments) → dropdowns, `Min:`/`Max:` from comments → bounded numeric fields, everything else → text field. Setting descriptions appear on hover.
 - Edit freely, press **Save**: only changed values are rewritten — comments, untouched lines and their order stay byte-identical (round-trip tested). Changes land in the game folder directly, so no manual copying.
 
