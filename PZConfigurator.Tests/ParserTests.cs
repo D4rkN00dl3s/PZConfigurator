@@ -92,6 +92,7 @@ public class ParserTests
             File.Copy(Data(name), Path.Combine(dir, name));
 
         var iniPath = Path.Combine(dir, "myserver.ini");
+        var preSave = File.ReadAllText(iniPath);
         var file = ConfigParser.LoadIni(iniPath);
         var setting = file.Settings.First(s => s.Key == "MaxPlayers");
         file.Update(setting, "10");
@@ -100,7 +101,43 @@ public class ParserTests
         var after = File.ReadAllText(iniPath);
         Assert.Contains("MaxPlayers=10", after);
         Assert.Contains("ShowFirstAndLastName=false", after); // other lines untouched
-        Assert.Equal(file.OriginalText, File.ReadAllText(iniPath + ".bak")); // backup = pre-save state
+        Assert.Equal(preSave, File.ReadAllText(iniPath + ".bak")); // backup = pre-save state
+
+        Directory.Delete(dir, true);
+    }
+
+    [Fact]
+    public void Save_TwiceWithoutChanges_BackupStillHoldsPreFirstSaveContent()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "pzcfg-test-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        var iniPath = Path.Combine(dir, "a.ini");
+        File.WriteAllText(iniPath, "PVP=false\r\n");
+
+        // first save changes the value, backup must keep the original
+        var file = ConfigParser.LoadIni(iniPath);
+        file.Update(file.Settings.First(s => s.Key == "PVP"), "true");
+        ConfigParser.Save(file);
+        Assert.Equal("PVP=false", File.ReadAllText(iniPath + ".bak").TrimEnd());
+
+        // second save with NO changes must not touch anything (especially not the backup)
+        ConfigParser.Save(file);
+        Assert.Equal("PVP=false", File.ReadAllText(iniPath + ".bak").TrimEnd());
+
+        Directory.Delete(dir, true);
+    }
+
+    [Fact]
+    public void Save_PreservesMultipleTrailingNewlines()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "pzcfg-test-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        var iniPath = Path.Combine(dir, "a.ini");
+        File.WriteAllText(iniPath, "PVP=true\r\n\r\n");
+
+        var file = ConfigParser.LoadIni(iniPath);
+        ConfigParser.Save(file);
+        Assert.Equal("PVP=true\r\n\r\n", File.ReadAllText(iniPath));
 
         Directory.Delete(dir, true);
     }

@@ -97,31 +97,43 @@
 
         <TabControl>
             <TabItem Header="Server (ini)">
-                <Grid ColumnDefinitions="220,*">
+                <Grid ColumnDefinitions="Auto,*">
                     <ListBox ItemsSource="{Binding IniGroups}" SelectedItem="{Binding IniSelected}"
+                             MinWidth="220" IsVisible="{Binding !IsSearching}"
                              BorderThickness="0,0,1,0"
                              BorderBrush="#28888888" Margin="0,4,4,4">
                         <ListBox.ItemTemplate>
                             <DataTemplate><TextBlock Text="{Binding Name}" Margin="4,3" /></DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
-                    <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Auto">
-                        <ItemsControl ItemsSource="{Binding IniSelected.Items}" Margin="8,0,10,0" />
-                    </ScrollViewer>
+                    <Grid Grid.Column="1">
+                        <ScrollViewer IsVisible="{Binding IsSearching}" HorizontalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{Binding IniMatches}" Margin="8,0,10,0" />
+                        </ScrollViewer>
+                        <ScrollViewer IsVisible="{Binding !IsSearching}" HorizontalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{Binding IniSelected.Items}" Margin="8,0,10,0" />
+                        </ScrollViewer>
+                    </Grid>
                 </Grid>
             </TabItem>
             <TabItem Header="Sandbox">
-                <Grid ColumnDefinitions="220,*">
+                <Grid ColumnDefinitions="Auto,*">
                     <ListBox ItemsSource="{Binding SandboxGroups}" SelectedItem="{Binding SandboxSelected}"
+                             MinWidth="220" IsVisible="{Binding !IsSearching}"
                              BorderThickness="0,0,1,0"
                              BorderBrush="#28888888" Margin="0,4,4,4">
                         <ListBox.ItemTemplate>
                             <DataTemplate><TextBlock Text="{Binding Name}" Margin="4,3" /></DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
-                    <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Auto">
-                        <ItemsControl ItemsSource="{Binding SandboxSelected.Items}" Margin="8,0,10,0" />
-                    </ScrollViewer>
+                    <Grid Grid.Column="1">
+                        <ScrollViewer IsVisible="{Binding IsSearching}" HorizontalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{Binding SandboxMatches}" Margin="8,0,10,0" />
+                        </ScrollViewer>
+                        <ScrollViewer IsVisible="{Binding !IsSearching}" HorizontalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{Binding SandboxSelected.Items}" Margin="8,0,10,0" />
+                        </ScrollViewer>
+                    </Grid>
                 </Grid>
             </TabItem>
         </TabControl>

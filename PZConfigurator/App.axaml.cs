@@ -17,10 +17,10 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            desktop.MainWindow = new MainWindow
-            {
-                DataContext = new MainViewModel(),
-            };
+            var window = new MainWindow();
+            desktop.MainWindow = window;
+            // ViewModel asks the window's confirm dialog before discarding unsaved edits
+            window.DataContext = new MainViewModel(() => ConfirmWindow.ShowAsync(window));
         }
 
         base.OnFrameworkInitializationCompleted();

@@ -6,13 +6,18 @@ using PZConfigurator.Config;
 
 namespace PZConfigurator.ViewModels;
 
-public partial class MainViewModel : ViewModelBase
+public partial class MainViewModel : ObservableObject
 {
     public const string DefaultFolderName = "Zomboid"; // under the user profile
 
     public ObservableCollection<string> Servers { get; } = [];
     public ObservableCollection<SettingGroupVM> IniGroups { get; } = [];
     public ObservableCollection<SettingGroupVM> SandboxGroups { get; } = [];
+
+    /// <summary>While searching, the right pane shows a flat list of matches from
+    /// every category of the tab instead of the selected category only.</summary>
+    public ObservableCollection<SettingVM> IniMatches { get; } = [];
+    public ObservableCollection<SettingVM> SandboxMatches { get; } = [];
 
     [ObservableProperty]
     private SettingGroupVM? _iniSelected;
@@ -37,24 +42,45 @@ public partial class MainViewModel : ViewModelBase
     private bool _isDirty;
 
     [ObservableProperty]
+    private bool _isSearching;
+
+    [ObservableProperty]
     private string _title = "PZConfigurator";
 
+    private readonly Func<Task<bool>>? _confirmDiscard;
     private List<ConfigFile> _files = [];
+    private string? _loadedServer;
     private bool _loading;
+    private bool _suppress;
 
-    public MainViewModel() => Discover();
+    public string? LoadedServer => _loadedServer;
 
-    [RelayCommand]
-    private void RefreshServerList() => Discover();
-
-    public void SetFolder(string path)
+    public MainViewModel(Func<Task<bool>>? confirmDiscard = null)
     {
-        Folder = path;
-        Discover();
+        _confirmDiscard = confirmDiscard;
+        _ = DiscoverAsync(); // constructor can't await; first load is fire-and-forget
     }
 
-    private void Discover()
+    private async Task<bool> ConfirmDiscardAsync() =>
+        _confirmDiscard == null || await _confirmDiscard();
+
+    [RelayCommand]
+    private async Task RefreshServerList() => await DiscoverAsync();
+
+    public async Task SetFolder(string path)
     {
+        Folder = path;
+        await DiscoverAsync();
+    }
+
+    private async Task DiscoverAsync()
+    {
+        if (IsDirty && !await ConfirmDiscardAsync())
+        {
+            Status = "Unsaved changes kept, list not reloaded";
+            return;
+        }
+
         _loading = true;
         try
         {
@@ -84,19 +110,49 @@ public partial class MainViewModel : ViewModelBase
         {
             _loading = false;
         }
-        Load();
+        LoadNow();
     }
 
-    partial void OnSelectedServerChanged(string? value) => Load();
+    partial void OnSelectedServerChanged(string? value) => _ = SwitchServerAsync();
 
-    private void Load()
+    private async Task SwitchServerAsync()
+    {
+        try
+        {
+            await SwitchServerCoreAsync();
+        }
+        catch (Exception ex)
+        {
+            Status = "Error switching server: " + ex.Message;
+        }
+    }
+
+    private async Task SwitchServerCoreAsync()
+    {
+        if (_suppress || _loading) return;
+        if (IsDirty && !await ConfirmDiscardAsync())
+        {
+            // revert the dropdown to the server actually loaded
+            _suppress = true;
+            SelectedServer = _loadedServer;
+            _suppress = false;
+            Status = "Unsaved changes kept, still on " + _loadedServer;
+            return;
+        }
+        LoadNow();
+    }
+
+    private void LoadNow()
     {
         IniGroups.Clear();
         SandboxGroups.Clear();
+        IniMatches.Clear();
+        SandboxMatches.Clear();
         _files = [];
         IsDirty = false;
         Title = "PZConfigurator";
-        if (_loading || SelectedServer == null) return;
+        _loadedServer = SelectedServer;
+        if (SelectedServer == null) return;
 
         try
         {
@@ -122,7 +178,7 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
-    private void BuildGroups(
+    internal static void BuildGroups(
         ConfigFile file, IEnumerable<SettingGroup> source,
         ObservableCollection<SettingGroupVM> target, string[] order,
         bool isIni, Action markDirty)
@@ -156,10 +212,25 @@ public partial class MainViewModel : ViewModelBase
     private void ApplyFilter()
     {
         var q = SearchText?.Trim();
-        foreach (var group in IniGroups.Concat(SandboxGroups))
+        IsSearching = !string.IsNullOrEmpty(q);
+
+        IniMatches.Clear();
+        SandboxMatches.Clear();
+        foreach (var group in IniGroups)
             foreach (var item in group.Items)
-                item.IsVisible = string.IsNullOrEmpty(q)
-                    || item.Key.Contains(q, StringComparison.OrdinalIgnoreCase);
+                CollectMatch(IniMatches, item, q);
+        foreach (var group in SandboxGroups)
+            foreach (var item in group.Items)
+                CollectMatch(SandboxMatches, item, q);
+    }
+
+    private static void CollectMatch(ObservableCollection<SettingVM> target, SettingVM item, string? q)
+    {
+        var match = string.IsNullOrEmpty(q)
+            || item.Key.Contains(q, StringComparison.OrdinalIgnoreCase);
+        // item.IsVisible drives the master-detail pane; flat matched lists are pre-filtered
+        item.IsVisible = match;
+        if (match) target.Add(item);
     }
 
     [RelayCommand]

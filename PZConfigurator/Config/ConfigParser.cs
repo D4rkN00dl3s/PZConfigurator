@@ -27,7 +27,7 @@ public static partial class ConfigParser
 
     public static ConfigFile LoadIni(string path)
     {
-        var lines = ReadLines(path, out var nl, out var bom, out var original, out var endsNl);
+        var lines = ReadLines(path, out var nl, out var bom, out var original, out var trailingNewlines);
         var settings = new List<Setting>();
         var comments = new List<string>();
 
@@ -63,7 +63,7 @@ public static partial class ConfigParser
             Path = path,
             Lines = lines,
             NewLine = nl,
-            EndsWithNewline = endsNl,
+            TrailingNewlines = trailingNewlines,
             OriginalText = original,
             HasBom = bom,
             Groups = [new SettingGroup { Name = "Server Settings", Settings = settings }],
@@ -72,7 +72,7 @@ public static partial class ConfigParser
 
     public static ConfigFile LoadLua(string path)
     {
-        var lines = ReadLines(path, out var nl, out var bom, out var original, out var endsNl);
+        var lines = ReadLines(path, out var nl, out var bom, out var original, out var trailingNewlines);
         var groups = new List<SettingGroup>();
         var current = new SettingGroup { Name = "General", Settings = [] };
         groups.Add(current);
@@ -147,7 +147,7 @@ public static partial class ConfigParser
             Path = path,
             Lines = lines,
             NewLine = nl,
-            EndsWithNewline = endsNl,
+            TrailingNewlines = trailingNewlines,
             OriginalText = original,
             HasBom = bom,
             Groups = groups,
@@ -215,23 +215,27 @@ public static partial class ConfigParser
         return t;
     }
 
-    static List<string> ReadLines(string path, out string newLine, out bool bom, out string original, out bool endsWithNewline)
+    static List<string> ReadLines(string path, out string newLine, out bool bom, out string original, out int trailingNewlines)
     {
         original = File.ReadAllText(path);
         bom = Encoding.UTF8.GetPreamble() is var p && p.Length > 0 &&
               File.ReadAllBytes(path).AsSpan().StartsWith(p);
         newLine = original.Contains("\r\n") ? "\r\n" : "\n";
-        endsWithNewline = original.EndsWith('\n');
-        var lines = original.Replace("\r\n", "\n").TrimEnd('\n').Split('\n').ToList();
+        var normalized = original.Replace("\r\n", "\n");
+        trailingNewlines = normalized.Length - normalized.TrimEnd('\n').Length;
+        var lines = normalized.TrimEnd('\n').Split('\n').ToList();
         return lines;
     }
 
     public static void Save(ConfigFile file)
     {
         var text = file.Render();
+        if (text == file.OriginalText) return; // unchanged: don't rewrite/roll the backup
         File.Copy(file.Path, file.Path + ".bak", overwrite: true);
         var tmp = file.Path + ".tmp";
         File.WriteAllText(tmp, text, new UTF8Encoding(file.HasBom));
         File.Move(tmp, file.Path, overwrite: true);
+        // keep "Render == OriginalText" meaningful: after save the file IS the original
+        file.OriginalText = text;
     }
 }

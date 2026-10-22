@@ -17,7 +17,7 @@ public partial class MainWindow : Window
             AllowMultiple = false,
         });
         if (folders.Count > 0 && DataContext is MainViewModel vm)
-            vm.SetFolder(folders[0].Path.LocalPath);
+            _ = vm.SetFolder(folders[0].Path.LocalPath); // fire-and-forget discover; errors land in vm.Status
     }
 
     protected override async void OnClosing(WindowClosingEventArgs e)

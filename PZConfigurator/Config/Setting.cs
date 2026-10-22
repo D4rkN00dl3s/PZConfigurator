@@ -37,8 +37,9 @@ public sealed class ConfigFile
     public required string Path { get; init; }
     public required List<string> Lines { get; init; }
     public required string NewLine { get; init; }
-    public required bool EndsWithNewline { get; init; }
-    public required string OriginalText { get; init; }
+    /// <summary>How many newlines terminated the original file (0, 1, ...).</summary>
+    public required int TrailingNewlines { get; init; }
+    public string OriginalText { get; set; } = "";
     public required bool HasBom { get; init; }
     public required List<SettingGroup> Groups { get; init; }
 
@@ -50,5 +51,5 @@ public sealed class ConfigFile
         Lines[setting.LineIndex] = setting.LinePrefix + newValue + setting.LineSuffix;
     }
 
-    public string Render() => string.Join(NewLine, Lines) + (EndsWithNewline ? NewLine : "");
+    public string Render() => string.Join(NewLine, Lines) + string.Concat(Enumerable.Repeat(NewLine, TrailingNewlines));
 }

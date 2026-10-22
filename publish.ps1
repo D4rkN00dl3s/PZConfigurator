@@ -16,6 +16,8 @@ $publishArgs = @(
 
 foreach ($r in $Runtimes) {
     Write-Host "=== Publishing $r ===" -ForegroundColor Cyan
+    # wipe previous output so stale files can't survive into the zip
+    Remove-Item "PZConfigurator/bin/Release/net10.0/$r/publish" -Recurse -Force -ErrorAction SilentlyContinue
     dotnet publish PZConfigurator -r $r @publishArgs
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     # native runtime packs leak .pdb files we don't want in the artifact
