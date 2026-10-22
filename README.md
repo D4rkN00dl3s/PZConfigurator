@@ -2,6 +2,8 @@
 
 Cross-platform desktop GUI for editing **Project Zomboid** server settings (Avalonia / .NET 10).
 
+> **AI-assisted project:** this tool was built with an AI coding agent under human direction — architecture, code review and testing were done iteratively with AI assistance. The author is not responsible for damaged server configs; the `.bak` backups exist for that reason.
+
 ## What it does
 
 - Lists servers found in `%USERPROFILE%\Zomboid\Server` (any folder selectable via Browse). A server = `name.ini` + `name_SandboxVars.lua`.
@@ -36,3 +38,7 @@ Self-contained single-file binaries (no .NET install needed for users):
 Output: `PZConfigurator/bin/Release/net10.0/<rid>/publish/` (~48 MB per target). Pushing a tag like `v1.0.0` triggers the GitHub Actions workflow, which runs tests and attaches all four platform builds to a GitHub Release.
 
 Known limits: `Mods=` is a plain text field; settings the parsers can't classify appear as text boxes or under "Other".
+
+## License
+
+[MIT](LICENSE)
