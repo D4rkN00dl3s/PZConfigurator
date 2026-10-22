@@ -8,7 +8,7 @@
         x:DataType="vm:MainViewModel"
         Icon="/Assets/avalonia-logo.ico"
         Title="{Binding Title}"
-        Width="920" Height="680">
+        Width="920" Height="680" MinWidth="780" MinHeight="420">
 
     <Design.DataContext>
         <vm:MainViewModel />
@@ -19,7 +19,7 @@
             <Border BorderBrush="#28888888" BorderThickness="0,0,0,1" Margin="0,0,0,3"
                     IsVisible="{Binding IsVisible}">
                 <Grid ColumnDefinitions="*,Auto" Margin="0,2">
-                    <TextBlock Text="{Binding Key}" TextWrapping="Wrap"
+                    <TextBlock Text="{Binding Key}" MinWidth="200" TextWrapping="Wrap"
                                VerticalAlignment="Center" FontWeight="Medium"
                                ToolTip.Tip="{Binding Tooltip}" />
                     <CheckBox Grid.Column="1" HorizontalAlignment="Right" IsChecked="{Binding IsChecked}" />
@@ -30,7 +30,7 @@
             <Border BorderBrush="#28888888" BorderThickness="0,0,0,1" Margin="0,0,0,3"
                     IsVisible="{Binding IsVisible}">
                 <Grid ColumnDefinitions="*,250" Margin="0,2">
-                    <TextBlock Text="{Binding Key}" TextWrapping="Wrap"
+                    <TextBlock Text="{Binding Key}" MinWidth="200" TextWrapping="Wrap"
                                VerticalAlignment="Center" FontWeight="Medium"
                                ToolTip.Tip="{Binding Tooltip}" />
                     <ComboBox Grid.Column="1" HorizontalAlignment="Right" MinWidth="250"
@@ -45,7 +45,7 @@
             <Border BorderBrush="#28888888" BorderThickness="0,0,0,1" Margin="0,0,0,3"
                     IsVisible="{Binding IsVisible}">
                 <Grid ColumnDefinitions="*,160" Margin="0,2">
-                    <TextBlock Text="{Binding Key}" TextWrapping="Wrap"
+                    <TextBlock Text="{Binding Key}" MinWidth="200" TextWrapping="Wrap"
                                VerticalAlignment="Center" FontWeight="Medium"
                                ToolTip.Tip="{Binding Tooltip}" />
                     <NumericUpDown Grid.Column="1" HorizontalAlignment="Right" Width="160"
@@ -59,7 +59,7 @@
             <Border BorderBrush="#28888888" BorderThickness="0,0,0,1" Margin="0,0,0,3"
                     IsVisible="{Binding IsVisible}">
                 <Grid ColumnDefinitions="*,320" Margin="0,2">
-                    <TextBlock Text="{Binding Key}" TextWrapping="Wrap"
+                    <TextBlock Text="{Binding Key}" MinWidth="200" TextWrapping="Wrap"
                                VerticalAlignment="Center" FontWeight="Medium"
                                ToolTip.Tip="{Binding Tooltip}" />
                     <TextBox Grid.Column="1" HorizontalAlignment="Right" Width="320"
@@ -80,12 +80,12 @@
             <ComboBox Grid.Column="1" Grid.Row="0" MinWidth="220"
                       ItemsSource="{Binding Servers}"
                       SelectedItem="{Binding SelectedServer}" />
-            <StackPanel Grid.Column="2" Grid.Row="0" Orientation="Horizontal" Spacing="6" Margin="8,0,0,0">
+            <Grid Grid.Column="2" Grid.Row="0" ColumnDefinitions="Auto,Auto,*" Margin="8,0,0,0">
                 <Button Content="Refresh" Command="{Binding RefreshServerListCommand}" />
-                <Button Content="Browse..." x:Name="BrowseBtn" Click="Browse_Click" />
-                <TextBlock Text="{Binding Folder}" VerticalAlignment="Center" Margin="8,0,0,0"
+                <Button Grid.Column="1" Content="Browse..." x:Name="BrowseBtn" Click="Browse_Click" Margin="6,0,0,0" />
+                <TextBlock Grid.Column="2" Text="{Binding Folder}" VerticalAlignment="Center" Margin="8,0,0,0"
                            Foreground="SlateGray" TextTrimming="CharacterEllipsis" />
-            </StackPanel>
+            </Grid>
             <Button Grid.Column="3" Grid.Row="0" Content="Save"
                     Command="{Binding SaveCommand}"
                     IsEnabled="{Binding IsDirty}" />
@@ -96,7 +96,7 @@
 
         <TabControl>
             <TabItem Header="Server (ini)">
-                <Grid ColumnDefinitions="220,*,10,*">
+                <Grid ColumnDefinitions="220,*">
                     <ListBox ItemsSource="{Binding IniGroups}" SelectedItem="{Binding IniSelected}"
                              BorderThickness="0,0,1,0"
                              BorderBrush="#28888888" Margin="0,4,4,4">
@@ -104,13 +104,13 @@
                             <DataTemplate><TextBlock Text="{Binding Name}" Margin="4,3" /></DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
-                    <ScrollViewer Grid.Column="3">
-                        <ItemsControl ItemsSource="{Binding IniSelected.Items}" Margin="0,0,6,0" />
+                    <ScrollViewer Grid.Column="1">
+                        <ItemsControl ItemsSource="{Binding IniSelected.Items}" Margin="8,0,10,0" />
                     </ScrollViewer>
                 </Grid>
             </TabItem>
             <TabItem Header="Sandbox">
-                <Grid ColumnDefinitions="220,*,10,*">
+                <Grid ColumnDefinitions="220,*">
                     <ListBox ItemsSource="{Binding SandboxGroups}" SelectedItem="{Binding SandboxSelected}"
                              BorderThickness="0,0,1,0"
                              BorderBrush="#28888888" Margin="0,4,4,4">
@@ -118,8 +118,8 @@
                             <DataTemplate><TextBlock Text="{Binding Name}" Margin="4,3" /></DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
-                    <ScrollViewer Grid.Column="3">
-                        <ItemsControl ItemsSource="{Binding SandboxSelected.Items}" Margin="0,0,6,0" />
+                    <ScrollViewer Grid.Column="1">
+                        <ItemsControl ItemsSource="{Binding SandboxSelected.Items}" Margin="8,0,10,0" />
                     </ScrollViewer>
                 </Grid>
             </TabItem>
