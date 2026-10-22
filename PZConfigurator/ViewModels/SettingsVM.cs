@@ -77,6 +77,7 @@ public partial class EnumSettingVM : SettingVM
 public partial class NumberSettingVM : SettingVM
 {
     public bool IsInteger { get; }
+    public string Format => IsInteger ? "0" : "0.0######";
     public double MinValue { get; }
     public double MaxValue { get; }
 
