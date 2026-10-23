@@ -10,6 +10,7 @@
 
   <ItemGroup>
     <AvaloniaResource Include="Assets\**" />
+    <AvaloniaResource Include="Templates\*.json" />
   </ItemGroup>
 
   <ItemGroup>

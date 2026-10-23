@@ -34,6 +34,12 @@ Test runs on Windows open the user's real Zomboid folder during `MainViewModel` 
 - `EnumSettingVM` options come from comments matching `N = label`; `Min:`/`Max:` in comments become numeric bounds.
 - `ConfirmWindow` is hand-rolled (no Avalonia dialog dependency); `OnClosing` clears `IsDirty` before re-`Close()` to avoid a re-entrant cancel loop.
 
+## Sandbox templates
+
+- `Config/TemplateLoader.cs` loads preset JSONs (`PZConfigurator/Templates/*.json`) as embedded `AvaloniaResource` plus any user `*.json` from `%USERPROFILE%\PZConfigurator\Templates\` (same schema: `{ name, description, values: { key: "literal" } }`).
+- The preset values are a **one-time snapshot of the current game build** (`GameRoot/media/lua/shared/Sandbox/*.lua`). A live extractor reading the game files directly could be tried sometime later — for now, presets only: to refresh values after a game update, hand-edit or regenerate the JSONs.
+- Applying a template goes through the normal write-through SettingVM path (dirty flag, disk-change guard on Save). Bool/enum/number values map to VM properties — unknown keys or unparseable values are counted in Status, never crash.
+
 ## Testing quirks
 
 - Fixtures in `PZConfigurator.Tests/TestData/` are copies of a real server's files. If Project Zomboid adds settings, refresh them from the real folder.

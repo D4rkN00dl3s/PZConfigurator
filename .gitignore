@@ -480,4 +480,7 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+# local-only reference notes / data (never pushed)
+/local/
+
 tools/*.png

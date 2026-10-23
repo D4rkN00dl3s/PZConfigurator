@@ -138,8 +138,21 @@
                             <DataTemplate><TextBlock Text="{Binding Name}" Margin="4,3" /></DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
-                    <Grid Grid.Column="1">
-                        <ScrollViewer IsVisible="{Binding IsSearching}" HorizontalScrollBarVisibility="Auto">
+                    <Grid Grid.Column="1" RowDefinitions="Auto,*" Margin="0,0,10,0">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                            <TextBlock Text="Template:" VerticalAlignment="Center" Margin="0,0,6,0" />
+                            <ComboBox ItemsSource="{Binding Templates}"
+                                      AutomationProperties.AutomationId="TemplateCombo"
+                                      SelectedItem="{Binding TemplateSelected}"
+                                      PlaceholderText="Choose a game mode"
+                                      MinWidth="200">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate><TextBlock Text="{Binding Name}" /></DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                            <Button Content="Apply" Command="{Binding ApplyTemplateCommand}" Margin="6,0,0,0" />
+                        </StackPanel>
+                        <ScrollViewer Grid.Row="1" IsVisible="{Binding IsSearching}" HorizontalScrollBarVisibility="Auto">
                             <ItemsControl ItemsSource="{Binding SandboxMatches}" Margin="8,0,10,0">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
@@ -148,7 +161,7 @@
                             </ItemsControl.ItemsPanel>
                         </ItemsControl>
                         </ScrollViewer>
-                        <ScrollViewer IsVisible="{Binding !IsSearching}" HorizontalScrollBarVisibility="Auto">
+                        <ScrollViewer Grid.Row="1" IsVisible="{Binding !IsSearching}" HorizontalScrollBarVisibility="Auto">
                             <ItemsControl ItemsSource="{Binding SandboxSelected.Items}" Margin="8,0,10,0">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>

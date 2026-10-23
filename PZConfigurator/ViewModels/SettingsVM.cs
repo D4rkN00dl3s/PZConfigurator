@@ -72,6 +72,15 @@ public partial class EnumSettingVM : SettingVM
         if (value >= 0 && value < _options.Count)
             Write(_options[value].Value.ToString(CultureInfo.InvariantCulture));
     }
+
+    /// <summary>Selects by the raw numeric value; false when the value isn't in the option list.</summary>
+    public bool TrySelectValue(int value)
+    {
+        var idx = _options.FindIndex(o => o.Value == value);
+        if (idx < 0) return false;
+        SelectedIndex = idx;
+        return true;
+    }
 }
 
 public partial class NumberSettingVM : SettingVM
