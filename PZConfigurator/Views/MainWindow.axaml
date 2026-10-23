@@ -15,9 +15,9 @@
     </Design.DataContext>
 
     <Window.Styles>
-        <!-- yellow label = value changed since load/last save -->
+        <!-- yellow label text = value changed since load/last save -->
         <Style Selector="TextBlock.modified">
-            <Setter Property="Background" Value="#66FFD633" />
+            <Setter Property="Foreground" Value="#FFDD33" />
         </Style>
     </Window.Styles>
 
