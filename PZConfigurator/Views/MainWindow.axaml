@@ -108,10 +108,22 @@
                     </ListBox>
                     <Grid Grid.Column="1">
                         <ScrollViewer IsVisible="{Binding IsSearching}" HorizontalScrollBarVisibility="Auto">
-                            <ItemsControl ItemsSource="{Binding IniMatches}" Margin="8,0,10,0" />
+                            <ItemsControl ItemsSource="{Binding IniMatches}" Margin="8,0,10,0">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <VirtualizingStackPanel />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
                         </ScrollViewer>
                         <ScrollViewer IsVisible="{Binding !IsSearching}" HorizontalScrollBarVisibility="Auto">
-                            <ItemsControl ItemsSource="{Binding IniSelected.Items}" Margin="8,0,10,0" />
+                            <ItemsControl ItemsSource="{Binding IniSelected.Items}" Margin="8,0,10,0">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <VirtualizingStackPanel />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
                         </ScrollViewer>
                     </Grid>
                 </Grid>
@@ -128,10 +140,22 @@
                     </ListBox>
                     <Grid Grid.Column="1">
                         <ScrollViewer IsVisible="{Binding IsSearching}" HorizontalScrollBarVisibility="Auto">
-                            <ItemsControl ItemsSource="{Binding SandboxMatches}" Margin="8,0,10,0" />
+                            <ItemsControl ItemsSource="{Binding SandboxMatches}" Margin="8,0,10,0">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <VirtualizingStackPanel />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
                         </ScrollViewer>
                         <ScrollViewer IsVisible="{Binding !IsSearching}" HorizontalScrollBarVisibility="Auto">
-                            <ItemsControl ItemsSource="{Binding SandboxSelected.Items}" Margin="8,0,10,0" />
+                            <ItemsControl ItemsSource="{Binding SandboxSelected.Items}" Margin="8,0,10,0">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <VirtualizingStackPanel />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
                         </ScrollViewer>
                     </Grid>
                 </Grid>
