@@ -1,4 +1,4 @@
-# Screenshot smoke: change a value on the Sandbox tab, verify yellow highlight on the key
+# Screenshot smoke: modify a value, badge + filter + search counter, via UIA patterns
 Add-Type -AssemblyName UIAutomationClient
 Add-Type -AssemblyName UIAutomationTypes
 Add-Type @"
@@ -11,18 +11,6 @@ public class S {
     public struct RECT { public int L, T, R, B; }
 }
 "@
-Add-Type @"
-using System;
-using System.Runtime.InteropServices;
-public class C {
-    [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
-    [DllImport("user32.dll")] public static extern void mouse_event(uint flags, int dx, int dy, uint data, UIntPtr extra);
-    [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
-    public static void Click(int x, int y) {
-        SetCursorPos(x, y); mouse_event(0x02,0,0,0,UIntPtr.Zero); mouse_event(0x04,0,0,0,UIntPtr.Zero);
-    }
-}
-"@
 [S]::SetProcessDPIAware() | Out-Null
 taskkill /IM PZConfigurator.exe /F 2>$null | Out-Null
 
@@ -32,37 +20,58 @@ $proc = Get-Process PZConfigurator | Where-Object { $_.MainWindowHandle -ne 0 } 
 $h = $proc.MainWindowHandle
 $root = [System.Windows.Automation.AutomationElement]::FromHandle($h)
 
-$tabs = $root.FindAll([System.Windows.Automation.TreeScope]::Descendants,
-    (New-Object System.Windows.Automation.PropertyCondition(
-        [System.Windows.Automation.AutomationElement]::ControlTypeProperty,
-        [System.Windows.Automation.ControlType]::TabItem)))
-[C]::SetForegroundWindow($h) | Out-Null
-Start-Sleep -Milliseconds 400
-$sbx = $tabs | Where-Object { $_.Current.Name -like "*Sandbox*" } | Select-Object -First 1
-$rect = $sbx.Current.BoundingRectangle
-[C]::Click([int]($rect.X + $rect.Width / 2), [int]($rect.Y + $rect.Height / 2))
-Start-Sleep -Milliseconds 1000
+Add-Type -AssemblyName System.Drawing
+function Snap($name) {
+    $r = New-Object 'S+RECT'
+    [S]::GetWindowRect($h, [ref]$r) | Out-Null
+    $bmp = New-Object System.Drawing.Bitmap(([int]($r.R - $r.L)), ([int]($r.B - $r.T)))
+    $g = [System.Drawing.Graphics]::FromImage($bmp)
+    $dc = $g.GetHdc()
+    [S]::PrintWindow($h, $dc, 2) | Out-Null
+    $g.ReleaseHdc($dc)
+    $bmp.Save("tools\$name.png", [System.Drawing.Imaging.ImageFormat]::Png)
+}
 
-# checkbox inside the sandbox detail pane is found under the window; use the
-# one whose label sits left of it: just take the first CheckBox whose X > tab-header X
+function ByName($n) {
+    $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants,
+        (New-Object System.Windows.Automation.PropertyCondition(
+            [System.Windows.Automation.AutomationElement]::NameProperty, $n)))
+}
+
+# 1) toggle the first checkbox in the detail pane
 $boxes = $root.FindAll([System.Windows.Automation.TreeScope]::Descendants,
     (New-Object System.Windows.Automation.PropertyCondition(
         [System.Windows.Automation.AutomationElement]::ControlTypeProperty,
         [System.Windows.Automation.ControlType]::CheckBox)))
-foreach ($b in $boxes) {
-    $br = $b.Current.BoundingRectangle
-    if ($br.X -gt 330) { [C]::Click([int]($br.X + 8), [int]($br.Y + $br.Height / 2)); break }
-}
-Start-Sleep -Milliseconds 800
+$boxes[0].GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern).Toggle()
+Start-Sleep -Milliseconds 600
+Snap "badge-smoke"
 
-$r = New-Object 'S+RECT'
-[S]::GetWindowRect($h, [ref]$r) | Out-Null
-Add-Type -AssemblyName System.Drawing
-$bmp = New-Object System.Drawing.Bitmap(([int]($r.R - $r.L)), ([int]($r.B - $r.T)))
-$g = [System.Drawing.Graphics]::FromImage($bmp)
-$dc = $g.GetHdc()
-[S]::PrintWindow($h, $dc, 2) | Out-Null
-$g.ReleaseHdc($dc)
-$bmp.Save("tools\modified-smoke.png", [System.Drawing.Imaging.ImageFormat]::Png)
+# 2) turn on the "Only modified" filter
+$btns = $root.FindAll([System.Windows.Automation.TreeScope]::Descendants,
+    (New-Object System.Windows.Automation.PropertyCondition(
+        [System.Windows.Automation.AutomationElement]::NameProperty, "Only modified")))
+$om = $btns[0]
+if ($om) { $om.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke() }
+Start-Sleep -Milliseconds 800
+Snap "modified-smoke"
+
+# 3) type a search term via the TextBox ValuePattern
+$search = ByName ""
+$edit = $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants,
+    (New-Object System.Windows.Automation.PropertyCondition(
+        [System.Windows.Automation.AutomationElement]::ControlTypeProperty,
+        [System.Windows.Automation.ControlType]::Edit)))
+$edit.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern).SetValue("Port")
+Start-Sleep -Milliseconds 800
+Snap "modified-search-smoke"
+
+# 4) clear via the × button
+$xcands = $root.FindAll([System.Windows.Automation.TreeScope]::Descendants,
+    (New-Object System.Windows.Automation.PropertyCondition(
+        [System.Windows.Automation.AutomationElement]::NameProperty, "Clear search")))
+if ($xcands.Count -gt 0) { $xcands[0].GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke() }
+Start-Sleep -Milliseconds 500
+
 taskkill /IM PZConfigurator.exe /F 2>$null | Out-Null
 Write-Output "done"

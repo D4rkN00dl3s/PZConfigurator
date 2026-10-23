@@ -42,8 +42,28 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private string? _status;
 
+    // status severity via text sniffing — call sites set plain strings, no need for a status-kind API
+    partial void OnStatusChanged(string? value)
+    {
+        IsStatusError = value != null && (value.StartsWith("Error", StringComparison.Ordinal)
+            || value.Contains("changed on disk", StringComparison.Ordinal)
+            || value.Contains("Access denied", StringComparison.Ordinal));
+        IsStatusWarn = !IsStatusError && value != null
+            && (value.Contains("not found", StringComparison.Ordinal)
+             || value.Contains("template problems", StringComparison.OrdinalIgnoreCase)
+             || value.Contains("Unsaved changes", StringComparison.Ordinal));
+    }
+
     [ObservableProperty]
     private string _searchText = "";
+
+    partial void OnSearchTextChanged(string value)
+    {
+        HasSearchText = value.Length > 0;
+        ApplyFilter();
+    }
+
+    partial void OnOnlyModifiedChanged(bool value) => ApplyFilter();
 
     [ObservableProperty]
     private bool _isDirty;
@@ -52,11 +72,24 @@ public partial class MainViewModel : ObservableObject
     private bool _isSearching;
 
     [ObservableProperty]
+    private bool _hasSearchText; // drives the × button
+
+    [ObservableProperty]
+    private bool _onlyModified; // show only settings changed since load/last save
+
+    [ObservableProperty]
+    private bool _isStatusError; // status text gets red/orange class
+
+    [ObservableProperty]
+    private bool _isStatusWarn;
+
+    [ObservableProperty]
     private string _title = "PZConfigurator";
 
     private readonly Func<Task<bool>>? _confirmDiscard;
     private List<ConfigFile> _files = [];
     private string? _loadedServer;
+    private string? _loadedStatus; // restored when search/filter is deactivated
     private bool _loading;
     private bool _suppress;
 
@@ -102,6 +135,7 @@ public partial class MainViewModel : ObservableObject
             if (items.TryGetValue(key, out var item) && TrySet(item, value)) applied++;
             else missing++;
         }
+        ApplyFilter(); // update visibility first if "modified only" is on
         Status = $"Applied \"{t.Name}\": {applied} values set"
             + (missing > 0 ? $", {missing} not found" : "")
             + " — review, then Save";
@@ -250,6 +284,7 @@ public partial class MainViewModel : ObservableObject
 
             Status = $"Loaded {SelectedServer}: "
                 + (ini.Settings.Count() + lua.Settings.Count()) + " settings";
+            _loadedStatus = Status;
             ApplyFilter();
         }
         catch (Exception ex)
@@ -279,20 +314,15 @@ public partial class MainViewModel : ObservableObject
 
         foreach (var cat in order.Where(byCategory.ContainsKey))
         {
-            target.Add(new SettingGroupVM
-            {
-                Name = cat,
-                Items = byCategory[cat].Select(s => SettingVMFactory.Create(file, s, markDirty)).ToList(),
-            });
+            target.Add(new SettingGroupVM(cat,
+                byCategory[cat].Select(s => SettingVMFactory.Create(file, s, markDirty)).ToList()));
         }
     }
-
-    partial void OnSearchTextChanged(string value) => ApplyFilter();
 
     private void ApplyFilter()
     {
         var q = SearchText?.Trim();
-        IsSearching = !string.IsNullOrEmpty(q);
+        IsSearching = !string.IsNullOrEmpty(q) || OnlyModified;
 
         IniMatches.Clear();
         SandboxMatches.Clear();
@@ -302,15 +332,37 @@ public partial class MainViewModel : ObservableObject
         foreach (var group in SandboxGroups)
             foreach (var item in group.Items)
                 CollectMatch(SandboxMatches, item, q);
+        UpdateFilterStatus();
     }
 
-    private static void CollectMatch(ObservableCollection<SettingVM> target, SettingVM item, string? q)
+    [RelayCommand]
+    private void ClearSearch() => SearchText = "";
+
+    [RelayCommand]
+    private void ToggleOnlyModified() => OnlyModified = !OnlyModified;
+
+    // status reflects the active filter mode; with no filter the "Loaded" message returns
+    private void UpdateFilterStatus()
     {
-        var match = string.IsNullOrEmpty(q)
-            || item.Key.Contains(q, StringComparison.OrdinalIgnoreCase);
+        var q = SearchText?.Trim();
+        var total = IniMatches.Count + SandboxMatches.Count;
+        if (!string.IsNullOrEmpty(q))
+            Status = $"Searching \"{q}\": {total} match{(total == 1 ? "" : "es")}"
+                + (OnlyModified ? " among modified" : "");
+        else if (OnlyModified)
+            Status = $"Showing modified settings only: {total}";
+        else if (_loadedStatus != null)
+            Status = _loadedStatus;
+    }
+
+    private void CollectMatch(ObservableCollection<SettingVM> target, SettingVM item, string? q)
+    {
+        var match = (string.IsNullOrEmpty(q)
+                || item.Key.Contains(q, StringComparison.OrdinalIgnoreCase))
+            && (!OnlyModified || item.IsModified);
         // item.IsVisible drives the master-detail pane; flat matched lists are pre-filtered
         item.IsVisible = match;
-        if (match) target.Add(item);
+        if (match && IsSearching) target.Add(item);
     }
 
     [RelayCommand]
@@ -334,7 +386,9 @@ public partial class MainViewModel : ObservableObject
             foreach (var g in IniGroups.Concat(SandboxGroups))
                 foreach (var i in g.Items)
                     i.IsModified = false;
+            ApplyFilter(); // with "modified only" on, the list empties now
             Status = "Saved " + DateTime.Now.ToString("HH:mm:ss");
+            _loadedStatus = null; // don't resurrect the old "Loaded" message over the Save confirmation
         }
         catch (Exception ex)
         {

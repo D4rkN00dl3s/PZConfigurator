@@ -63,12 +63,23 @@ public partial class EnumSettingVM : SettingVM
     [ObservableProperty]
     private int _selectedIndex;
 
+    /// <summary>raw file value that isn't in the option list; shown as a hint so it isn't silently overwritten.</summary>
+    [ObservableProperty]
+    private string? _outOfRangeText;
+
     public EnumSettingVM(Setting s, ConfigFile file, Action markDirty)
         : base(s, file, markDirty)
     {
         _options = s.Options;
         Items = _options.Select(o => o.Label).ToList();
         _selectedIndex = _options.FindIndex(o => o.Value.ToString() == s.RawValue.Trim());
+        if (_selectedIndex < 0)
+        {
+            var raw = s.RawValue.Trim();
+            OutOfRangeText = raw.Length == 0
+                ? "(not set — file value not in list)"
+                : $"(file has: {raw} — not in list)";
+        }
     }
 
     partial void OnSelectedIndexChanged(int value)
@@ -85,6 +96,9 @@ public partial class EnumSettingVM : SettingVM
         SelectedIndex = idx;
         return true;
     }
+
+    public bool HasOutOfRangeText => OutOfRangeText != null;
+    partial void OnOutOfRangeTextChanged(string? value) => OnPropertyChanged(nameof(HasOutOfRangeText));
 }
 
 public partial class NumberSettingVM : SettingVM
@@ -135,10 +149,32 @@ public partial class TextSettingVM : SettingVM
     }
 }
 
-public sealed class SettingGroupVM
+public sealed class SettingGroupVM : ObservableObject
 {
-    public required string Name { get; init; }
-    public required List<SettingVM> Items { get; init; }
+    private readonly List<SettingVM> _items;
+    private int _modified;
+
+    public SettingGroupVM(string name, List<SettingVM> items)
+    {
+        Name = name;
+        _items = items;
+        // keeps the category badge ("count of unsaved changes") current
+        foreach (var item in items)
+            item.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(SettingVM.IsModified))
+                {
+                    _modified = _items.Count(i => i.IsModified);
+                    OnPropertyChanged(nameof(ModifiedCount));
+                    OnPropertyChanged(nameof(HasModified));
+                }
+            };
+    }
+
+    public string Name { get; }
+    public List<SettingVM> Items => _items;
+    public int ModifiedCount => _modified;
+    public bool HasModified => _modified > 0;
 }
 
 public static class SettingVMFactory

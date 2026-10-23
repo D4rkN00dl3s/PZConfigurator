@@ -15,9 +15,20 @@
     </Design.DataContext>
 
     <Window.Styles>
-        <!-- yellow label text = value changed since load/last save -->
+        <!-- yellow text = value changed since load/last save -->
         <Style Selector="TextBlock.modified">
             <Setter Property="Foreground" Value="#FFDD33" />
+        </Style>
+        <!-- filter/status emphasis -->
+        <Style Selector="Button.active">
+            <Setter Property="Background" Value="#FFDD33" />
+            <Setter Property="Foreground" Value="#FF1B1B1B" />
+        </Style>
+        <Style Selector="TextBlock.error">
+            <Setter Property="Foreground" Value="#FFD06B6B" />
+        </Style>
+        <Style Selector="TextBlock.warn">
+            <Setter Property="Foreground" Value="#FFD6A24A" />
         </Style>
     </Window.Styles>
 
@@ -37,16 +48,20 @@
         <DataTemplate DataType="vm:EnumSettingVM">
             <Border BorderBrush="#28888888" BorderThickness="0,0,0,1" Margin="0,0,0,3"
                     IsVisible="{Binding IsVisible}">
-                <Grid ColumnDefinitions="*,250" Margin="0,2">
+                <Grid ColumnDefinitions="*,Auto" Margin="0,2">
                     <TextBlock Text="{Binding Key}" MinWidth="140" TextWrapping="Wrap"
                                VerticalAlignment="Center" FontWeight="Medium"
                                Classes.modified="{Binding IsModified}"
                                ToolTip.Tip="{Binding Tooltip}" />
-                    <ComboBox Grid.Column="1" HorizontalAlignment="Right" MinWidth="250"
-                              ItemsSource="{Binding Items}"
-                              HorizontalContentAlignment="Left"
-                              SelectedIndex="{Binding SelectedIndex}"
-                              ToolTip.Tip="{Binding Tooltip}" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                        <ComboBox MinWidth="250"
+                                  ItemsSource="{Binding Items}"
+                                  HorizontalContentAlignment="Left"
+                                  SelectedIndex="{Binding SelectedIndex}"
+                                  ToolTip.Tip="{Binding Tooltip}" />
+                        <TextBlock Text="{Binding OutOfRangeText}" IsVisible="{Binding HasOutOfRangeText}"
+                                   VerticalAlignment="Center" Foreground="#E0C87832" />
+                    </StackPanel>
                 </Grid>
             </Border>
         </DataTemplate>
@@ -84,7 +99,8 @@
     <DockPanel Margin="10">
         <StackPanel DockPanel.Dock="Bottom">
             <TextBlock Text="{Binding Status}" Margin="0,6,0,0"
-                       Foreground="SlateGray" TextWrapping="Wrap" />
+                       Foreground="SlateGray" TextWrapping="Wrap"
+                       Classes.error="{Binding IsStatusError}" Classes.warn="{Binding IsStatusWarn}" />
         </StackPanel>
 
         <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,Auto,*,Auto" Margin="0,0,0,8" RowDefinitions="Auto,Auto">
@@ -98,12 +114,23 @@
                 <TextBlock Grid.Column="2" Text="{Binding Folder}" VerticalAlignment="Center" Margin="8,0,0,0"
                            Foreground="SlateGray" TextTrimming="CharacterEllipsis" />
             </Grid>
-            <Button Grid.Column="3" Grid.Row="0" Content="Save"
-                    Command="{Binding SaveCommand}"
-                    IsEnabled="{Binding IsDirty}" />
+            <StackPanel Grid.Column="3" Grid.Row="0" Orientation="Horizontal" VerticalAlignment="Center">
+                <Button Content="Only modified" Classes.active="{Binding OnlyModified}"
+                        Command="{Binding ToggleOnlyModifiedCommand}"
+                        ToolTip.Tip="Show only settings changed since load / last save"
+                        Margin="0,0,8,0" />
+                <Button Content="Save" Command="{Binding SaveCommand}" IsEnabled="{Binding IsDirty}" />
+            </StackPanel>
 
-            <TextBox Grid.Row="1" Grid.ColumnSpan="4" PlaceholderText="Search settings..."
-                     Text="{Binding SearchText}" Margin="0,8,0,0" />
+            <Grid Grid.Row="1" Grid.ColumnSpan="4" ColumnDefinitions="*,Auto" Margin="0,8,0,0">
+                <TextBox x:Name="SearchBox"
+                         PlaceholderText="Search settings... (Esc clears, Ctrl+F focuses)"
+                         Text="{Binding SearchText}" />
+                <Button Grid.Column="1" Content="×" MinWidth="30" FontSize="14" Margin="6,0,0,0"
+                        IsVisible="{Binding HasSearchText}"
+                        Command="{Binding ClearSearchCommand}"
+                        ToolTip.Tip="Clear search" />
+            </Grid>
         </Grid>
 
         <TabControl>
@@ -114,7 +141,14 @@
                              BorderThickness="0,0,1,0"
                              BorderBrush="#28888888" Margin="0,4,4,4">
                         <ListBox.ItemTemplate>
-                            <DataTemplate><TextBlock Text="{Binding Name}" Margin="4,3" /></DataTemplate>
+                            <DataTemplate>
+                                <Grid ColumnDefinitions="*,Auto" Margin="4,3">
+                                    <TextBlock Text="{Binding Name}" />
+                                    <TextBlock Grid.Column="1" Text="{Binding ModifiedCount}" Margin="6,0,0,0"
+                                               IsVisible="{Binding HasModified}"
+                                               Foreground="#FFDD33" FontWeight="Bold" />
+                                </Grid>
+                            </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
                     <Grid Grid.Column="1">
@@ -146,7 +180,14 @@
                              BorderThickness="0,0,1,0"
                              BorderBrush="#28888888" Margin="0,4,4,4">
                         <ListBox.ItemTemplate>
-                            <DataTemplate><TextBlock Text="{Binding Name}" Margin="4,3" /></DataTemplate>
+                            <DataTemplate>
+                                <Grid ColumnDefinitions="*,Auto" Margin="4,3">
+                                    <TextBlock Text="{Binding Name}" />
+                                    <TextBlock Grid.Column="1" Text="{Binding ModifiedCount}" Margin="6,0,0,0"
+                                               IsVisible="{Binding HasModified}"
+                                               Foreground="#FFDD33" FontWeight="Bold" />
+                                </Grid>
+                            </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
                     <Grid Grid.Column="1" RowDefinitions="Auto,*" Margin="0,0,10,0">
