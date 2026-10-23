@@ -39,6 +39,12 @@ public abstract partial class SettingVM : ObservableObject
         get => _isVisible;
         set { if (_isVisible != value) { _isVisible = value; OnPropertyChanged(); } }
     }
+
+    [ObservableProperty]
+    private string? _matchCategory; // shown in the search matches pane
+
+    public bool HasMatchCategory => MatchCategory != null;
+    partial void OnMatchCategoryChanged(string? value) => OnPropertyChanged(nameof(HasMatchCategory));
 }
 
 public partial class BoolSettingVM : SettingVM

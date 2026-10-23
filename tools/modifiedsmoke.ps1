@@ -74,4 +74,15 @@ if ($xcands.Count -gt 0) { $xcands[0].GetCurrentPattern([System.Windows.Automati
 Start-Sleep -Milliseconds 500
 
 taskkill /IM PZConfigurator.exe /F 2>$null | Out-Null
+
+# close via UIA so OnClosing runs and settings are persisted
+Start-Process -FilePath "PZConfigurator\bin\Debug\net10.0\PZConfigurator.exe"
+Start-Sleep 6
+$proc2 = Get-Process PZConfigurator | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1
+$root2 = [System.Windows.Automation.AutomationElement]::FromHandle($proc2.MainWindowHandle)
+$root2.GetCurrentPattern([System.Windows.Automation.WindowPattern]::Pattern).Close()
+Start-Sleep 3
+$settings = "$env:USERPROFILE\PZConfigurator\settings.json"
+if (Test-Path $settings) { Write-Output "SETTINGS:"; Get-Content $settings } else { Write-Output "SETTINGS: MISSING" }
+taskkill /IM PZConfigurator.exe /F 2>$null | Out-Null
 Write-Output "done"

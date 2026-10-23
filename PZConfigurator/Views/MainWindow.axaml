@@ -24,6 +24,11 @@
             <Setter Property="Background" Value="#FFDD33" />
             <Setter Property="Foreground" Value="#FF1B1B1B" />
         </Style>
+        <Style Selector="Button.dirty">
+            <Setter Property="Background" Value="#FFDD33" />
+            <Setter Property="Foreground" Value="#FF1B1B1B" />
+            <Setter Property="FontWeight" Value="Bold" />
+        </Style>
         <Style Selector="TextBlock.error">
             <Setter Property="Foreground" Value="#FFD06B6B" />
         </Style>
@@ -37,10 +42,13 @@
             <Border BorderBrush="#28888888" BorderThickness="0,0,0,1" Margin="0,0,0,3"
                     IsVisible="{Binding IsVisible}">
                 <Grid ColumnDefinitions="*,Auto" Margin="0,2">
-                    <TextBlock Text="{Binding Key}" MinWidth="140" TextWrapping="Wrap"
-                               VerticalAlignment="Center" FontWeight="Medium"
-                               Classes.modified="{Binding IsModified}"
-                               ToolTip.Tip="{Binding Tooltip}" />
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Key}" MinWidth="140" TextWrapping="Wrap" FontWeight="Medium"
+                                   Classes.modified="{Binding IsModified}"
+                                   ToolTip.Tip="{Binding Tooltip}" />
+                        <TextBlock Text="{Binding MatchCategory}" FontSize="11" Foreground="SlateGray"
+                                   IsVisible="{Binding HasMatchCategory}" />
+                    </StackPanel>
                     <CheckBox Grid.Column="1" HorizontalAlignment="Right" IsChecked="{Binding IsChecked}" />
                 </Grid>
             </Border>
@@ -49,10 +57,13 @@
             <Border BorderBrush="#28888888" BorderThickness="0,0,0,1" Margin="0,0,0,3"
                     IsVisible="{Binding IsVisible}">
                 <Grid ColumnDefinitions="*,Auto" Margin="0,2">
-                    <TextBlock Text="{Binding Key}" MinWidth="140" TextWrapping="Wrap"
-                               VerticalAlignment="Center" FontWeight="Medium"
-                               Classes.modified="{Binding IsModified}"
-                               ToolTip.Tip="{Binding Tooltip}" />
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Key}" MinWidth="140" TextWrapping="Wrap" FontWeight="Medium"
+                                   Classes.modified="{Binding IsModified}"
+                                   ToolTip.Tip="{Binding Tooltip}" />
+                        <TextBlock Text="{Binding MatchCategory}" FontSize="11" Foreground="SlateGray"
+                                   IsVisible="{Binding HasMatchCategory}" />
+                    </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
                         <ComboBox MinWidth="250"
                                   ItemsSource="{Binding Items}"
@@ -69,10 +80,13 @@
             <Border BorderBrush="#28888888" BorderThickness="0,0,0,1" Margin="0,0,0,3"
                     IsVisible="{Binding IsVisible}">
                 <Grid ColumnDefinitions="*,184" Margin="0,2">
-                    <TextBlock Text="{Binding Key}" MinWidth="140" TextWrapping="Wrap"
-                               VerticalAlignment="Center" FontWeight="Medium"
-                               Classes.modified="{Binding IsModified}"
-                               ToolTip.Tip="{Binding Tooltip}" />
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Key}" MinWidth="140" TextWrapping="Wrap" FontWeight="Medium"
+                                   Classes.modified="{Binding IsModified}"
+                                   ToolTip.Tip="{Binding Tooltip}" />
+                        <TextBlock Text="{Binding MatchCategory}" FontSize="11" Foreground="SlateGray"
+                                   IsVisible="{Binding HasMatchCategory}" />
+                    </StackPanel>
                     <NumericUpDown Grid.Column="1" HorizontalAlignment="Right" Width="184"
                                    ButtonSpinnerLocation="Left"
                                    Value="{Binding NumberValue}" FormatString="{Binding Format}"
@@ -85,10 +99,13 @@
             <Border BorderBrush="#28888888" BorderThickness="0,0,0,1" Margin="0,0,0,3"
                     IsVisible="{Binding IsVisible}">
                 <Grid ColumnDefinitions="*,320" Margin="0,2">
-                    <TextBlock Text="{Binding Key}" MinWidth="140" TextWrapping="Wrap"
-                               VerticalAlignment="Center" FontWeight="Medium"
-                               Classes.modified="{Binding IsModified}"
-                               ToolTip.Tip="{Binding Tooltip}" />
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Key}" MinWidth="140" TextWrapping="Wrap" FontWeight="Medium"
+                                   Classes.modified="{Binding IsModified}"
+                                   ToolTip.Tip="{Binding Tooltip}" />
+                        <TextBlock Text="{Binding MatchCategory}" FontSize="11" Foreground="SlateGray"
+                                   IsVisible="{Binding HasMatchCategory}" />
+                    </StackPanel>
                     <TextBox Grid.Column="1" HorizontalAlignment="Right" Width="320"
                              Text="{Binding Text}" IsReadOnly="{Binding IsReadOnly}" />
                 </Grid>
@@ -119,7 +136,8 @@
                         Command="{Binding ToggleOnlyModifiedCommand}"
                         ToolTip.Tip="Show only settings changed since load / last save"
                         Margin="0,0,8,0" />
-                <Button Content="Save" Command="{Binding SaveCommand}" IsEnabled="{Binding IsDirty}" />
+                <Button Content="Save" Command="{Binding SaveCommand}" IsEnabled="{Binding IsDirty}"
+                        Classes.dirty="{Binding IsDirty}" />
             </StackPanel>
 
             <Grid Grid.Row="1" Grid.ColumnSpan="4" ColumnDefinitions="*,Auto" Margin="0,8,0,0">
@@ -133,7 +151,7 @@
             </Grid>
         </Grid>
 
-        <TabControl>
+        <TabControl SelectedIndex="{Binding SelectedTabIndex}">
             <TabItem Header="Server (ini)">
                 <Grid ColumnDefinitions="Auto,*">
                     <ListBox ItemsSource="{Binding IniGroups}" SelectedItem="{Binding IniSelected}"

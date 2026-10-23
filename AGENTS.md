@@ -6,12 +6,13 @@ Desktop GUI (Avalonia 12 / .NET 10) for editing Project Zomboid dedicated-server
 ## Commands
 
 ```sh
-dotnet test -v q --nologo                  # all tests (16)
+dotnet test -v q --nologo                  # all tests (26)
 dotnet test --filter <TestName>            # single test
 dotnet build PZConfigurator -v q --nologo  # zero-warning is the bar
 dotnet run --project PZConfigurator        # app loads real configs from %USERPROFILE%\Zomboid\Server
 .\publish.ps1                              # self-contained builds, all 4 RIDs (not needed for small fixes)
 powershell -ExecutionPolicy Bypass -File tools\uicheck.ps1   # UIA smoke: toggle→dirty→Discard→close
+powershell -ExecutionPolicy Bypass -File tools\templateapply.ps1  # template apply smoke (Ctrl+Tab + UIA patterns)
 ```
 
 Test runs on Windows open the user's real Zomboid folder during `MainViewModel` construction (synchronous; harmless).
@@ -51,3 +52,13 @@ Test runs on Windows open the user's real Zomboid folder during `MainViewModel` 
 UI scripts in `tools/` drive the real window via UIA + SendInput. Avalonia TabItems
 expose no `SelectionItemPattern` — click tab-header coordinates instead. Tests can't
 catch UI bugs; run the relevant script after XAML changes.
+
+## UX batch 7–11 (medium)
+
+- **#7 Remember last server + window geometry** — `%USERPROFILE%\PZConfigurator\settings.json` holds `Folder`, `Server`, `X`, `Y`, `Width`, `Height`, `Maximized` (best-effort try/catch, never blocks startup/exit). Restored in `MainWindow.OnOpened` (position only if it lands on a connected screen via `Screens.All` bounds test), saved on `OnClosing` via `PersistSettings()`. New module: `Config/AppSettings.cs`; wiring: `Views/MainWindow.axaml.cs`.
+- **#9 Template preview before Apply** — on `TemplateSelected` change, `Status` shows `Ready to apply "<name>": <description> — N of M settings found. Press Apply, review, then Save`. No confirm dialog (2-step apply already). VM: `MainViewModel.OnTemplateSelectedChanged`.
+- **#10 Save button accent when dirty** — `Classes.dirty="{Binding IsDirty}"` on the Save button; `.dirty` style = yellow background, bold font. XAML: `Views/MainWindow.axaml`.
+- **#11 Search results show category** — `SettingVM.MatchCategory` set in `CollectMatch` as `"<Category> · "` only while `IsSearching`, cleared otherwise; rendered as a dim `FontSize=11` line under the key in all four row templates. VM: `SettingsVM.MatchCategory`/`HasMatchCategory`, `MainViewModel.CollectMatch`; XAML: four row templates in `Views/MainWindow.axaml`.
+- **Ctrl+Tab tab switching + search-box focus on open** — `TabControl SelectedIndex="{Binding SelectedTabIndex}"`; `MainWindow_KeyDown` handles Ctrl+Tab (cycles tabs), Ctrl+S (Save), Ctrl+F (focus search); handler attached with `AddHandler(..., handledEventsToo: true)` because Avalonia's keyboard navigation swallows Ctrl+Tab first; search box gets focus on `OnOpened`. UIA scripts use `SelectionItemPattern` on TabItems (no mouse clicks — DPI-safe).
+
+

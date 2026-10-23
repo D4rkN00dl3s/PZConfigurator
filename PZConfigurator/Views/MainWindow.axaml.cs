@@ -9,12 +9,69 @@ namespace PZConfigurator.Views;
 
 public partial class MainWindow : Window
 {
+    private readonly Config.AppSettings? _restored;
+
     public MainWindow()
     {
         InitializeComponent();
-        KeyDown += MainWindow_KeyDown;
+        _restored = Config.AppSettings.Load();
+        // Bubble|handledEventsToo: Avalonia's keyboard navigation swallows Ctrl+Tab first
+        AddHandler(KeyDownEvent, MainWindow_KeyDown, RoutingStrategies.Bubble, handledEventsToo: true);
         var search = this.FindControl<TextBox>("SearchBox");
         if (search != null) search.KeyDown += SearchBox_KeyDown;
+    }
+
+    protected override void OnOpened(EventArgs e)
+    {
+        base.OnOpened(e);
+
+        // restore window geometry + last folder/server; the VM's ctor discover on the
+        // default folder is harmless (fast local scan) and SetFolder below re-runs it
+        // keyboard shortcuts need a focused element; search box is a useful default
+        this.FindControl<TextBox>("SearchBox")?.Focus();
+        var s = _restored;
+        if (s != null)
+        {
+            var bounds = Screens.All.Select(sc => sc.Bounds).ToList();
+            if (s.X.HasValue && s.Y.HasValue && s.Width is > 300 && s.Height is > 200
+                && bounds.Any(b => b.Contains(new PixelPoint(s.X.Value + 10, s.Y.Value + 10))))
+            {
+                Position = new PixelPoint(s.X.Value, s.Y.Value);
+                Width = s.Width.Value;
+                Height = s.Height.Value;
+                ClientSize = new Avalonia.Size(s.Width.Value, s.Height.Value);
+            }
+            if (s.Maximized) WindowState = WindowState.Maximized;
+        }
+
+        _ = RestoreSelectionAsync(s);
+    }
+
+    private async Task RestoreSelectionAsync(Config.AppSettings? s)
+    {
+        if (DataContext is not MainViewModel vm) return;
+        if (s?.Folder is string f && f != vm.Folder)
+        {
+            vm.Folder = f;
+            await vm.SetFolder(vm.Folder); // re-discover in the restored folder
+        }
+        if (s?.Server is string server && vm.Servers.Contains(server))
+            vm.SelectedServer = server; // replaces the auto-selected first entry
+    }
+
+    private void PersistSettings()
+    {
+        if (DataContext is not MainViewModel vm) return;
+        Config.AppSettings.Save(new Config.AppSettings
+        {
+            Folder = vm.Folder,
+            Server = vm.LoadedServer ?? vm.SelectedServer,
+            X = WindowState == WindowState.Maximized ? null : Position.X,
+            Y = WindowState == WindowState.Maximized ? null : Position.Y,
+            Width = Width,
+            Height = Height,
+            Maximized = WindowState == WindowState.Maximized,
+        });
     }
 
     // Ctrl+S = Save, Ctrl+F = focus search
@@ -29,6 +86,11 @@ public partial class MainWindow : Window
         else if (e.Key == Key.F)
         {
             this.FindControl<TextBox>("SearchBox")?.Focus();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Tab && DataContext is MainViewModel tab)
+        {
+            tab.SelectedTabIndex = (tab.SelectedTabIndex + 1) % 2;
             e.Handled = true;
         }
     }
@@ -53,6 +115,7 @@ public partial class MainWindow : Window
 
     protected override async void OnClosing(WindowClosingEventArgs e)
     {
+        PersistSettings();
         if (DataContext is MainViewModel vm && vm.IsDirty)
         {
             e.Cancel = true;

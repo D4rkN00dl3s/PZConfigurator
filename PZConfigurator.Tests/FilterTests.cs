@@ -5,6 +5,8 @@ namespace PZConfigurator.Tests;
 
 public class FilterTests : IDisposable
 {
+    static FilterTests() => AvaloniaTestSetup.Ensure();
+
     private readonly string _dir = Path.Combine(
         Path.GetTempPath(), "pzcfg-flt-" + Guid.NewGuid().ToString("N"));
 
@@ -86,5 +88,36 @@ public class FilterTests : IDisposable
         vm.Status = "Applied \"Apocalypse\": 265 values set, 6 not found — review, then Save";
         Assert.False(vm.IsStatusError);
         Assert.True(vm.IsStatusWarn);
+    }
+
+    [Fact]
+    public async Task Search_TagsMatchesWithCategoryAndClearsTags()
+    {
+        var vm = new MainViewModel();
+        await vm.SetFolder(_dir);
+
+        vm.SearchText = "Port";
+        var tagged = vm.SandboxGroups.Concat(vm.IniGroups)
+            .SelectMany(g => g.Items).Where(i => i.HasMatchCategory).ToList();
+        Assert.NotEmpty(tagged);
+        Assert.All(tagged, i => Assert.EndsWith(" · ", i.MatchCategory));
+        Assert.Equal(vm.IniMatches.Count + vm.SandboxMatches.Count, tagged.Count);
+
+        vm.SearchText = "";
+        Assert.DoesNotContain(vm.SandboxGroups.Concat(vm.IniGroups)
+            .SelectMany(g => g.Items), i => i.HasMatchCategory);
+    }
+
+    [Fact]
+    public async Task TemplatePreview_ShowsCountsOnSelection()
+    {
+        var vm = new MainViewModel();
+        await vm.SetFolder(_dir);
+        var apocalypse = vm.Templates.Single(t => t.Name == "Apocalypse");
+
+        vm.TemplateSelected = apocalypse;
+
+        Assert.Contains($"Ready to apply \"Apocalypse\"", vm.Status);
+        Assert.Contains($"{apocalypse.Values.Count} settings found", vm.Status);
     }
 }

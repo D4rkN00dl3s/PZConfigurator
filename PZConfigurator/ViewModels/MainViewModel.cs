@@ -21,6 +21,18 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private SandboxTemplate? _templateSelected;
 
+    // status preview of what Apply will do, before it does it
+    partial void OnTemplateSelectedChanged(SandboxTemplate? value)
+    {
+        if (value == null) return;
+        var present = SandboxGroups.SelectMany(g => g.Items).Select(i => i.Key)
+            .ToHashSet(StringComparer.Ordinal);
+        var found = value.Values.Keys.Count(k => present.Contains(k));
+        Status = $"Ready to apply \"{value.Name}\""
+            + (string.IsNullOrEmpty(value.Description) ? "" : $": {value.Description}")
+            + $" — {found} of {value.Values.Count} settings found. Press Apply, review, then Save";
+    }
+
     /// <summary>While searching, the right pane shows a flat list of matches from
     /// every category of the tab instead of the selected category only.</summary>
     public ObservableCollection<SettingVM> IniMatches { get; } = [];
@@ -85,6 +97,9 @@ public partial class MainViewModel : ObservableObject
 
     [ObservableProperty]
     private string _title = "PZConfigurator";
+
+    [ObservableProperty]
+    private int _selectedTabIndex; // Ctrl+Tab cycles tabs; scripts use it too
 
     private readonly Func<Task<bool>>? _confirmDiscard;
     private List<ConfigFile> _files = [];
@@ -328,10 +343,10 @@ public partial class MainViewModel : ObservableObject
         SandboxMatches.Clear();
         foreach (var group in IniGroups)
             foreach (var item in group.Items)
-                CollectMatch(IniMatches, item, q);
+                CollectMatch(IniMatches, item, q, group.Name);
         foreach (var group in SandboxGroups)
             foreach (var item in group.Items)
-                CollectMatch(SandboxMatches, item, q);
+                CollectMatch(SandboxMatches, item, q, group.Name);
         UpdateFilterStatus();
     }
 
@@ -355,13 +370,15 @@ public partial class MainViewModel : ObservableObject
             Status = _loadedStatus;
     }
 
-    private void CollectMatch(ObservableCollection<SettingVM> target, SettingVM item, string? q)
+    private void CollectMatch(ObservableCollection<SettingVM> target, SettingVM item, string? q, string category)
     {
         var match = (string.IsNullOrEmpty(q)
                 || item.Key.Contains(q, StringComparison.OrdinalIgnoreCase))
             && (!OnlyModified || item.IsModified);
         // item.IsVisible drives the master-detail pane; flat matched lists are pre-filtered
         item.IsVisible = match;
+        // the category is only relevant while the flat matches pane is up
+        item.MatchCategory = match && IsSearching ? category + " · " : null;
         if (match && IsSearching) target.Add(item);
     }
 
