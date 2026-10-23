@@ -1,0 +1,47 @@
+# AGENTS.md — PZConfigurator
+
+Desktop GUI (Avalonia 12 / .NET 10) for editing Project Zomboid dedicated-server configs:
+`name.ini` + `name_SandboxVars.lua` inside the server's `Zomboid\Server` folder.
+
+## Commands
+
+```sh
+dotnet test -v q --nologo                  # all tests (16)
+dotnet test --filter <TestName>            # single test
+dotnet build PZConfigurator -v q --nologo  # zero-warning is the bar
+dotnet run --project PZConfigurator        # app loads real configs from %USERPROFILE%\Zomboid\Server
+.\publish.ps1                              # self-contained builds, all 4 RIDs (not needed for small fixes)
+powershell -ExecutionPolicy Bypass -File tools\uicheck.ps1   # UIA smoke: toggle→dirty→Discard→close
+```
+
+Test runs on Windows open the user's real Zomboid folder during `MainViewModel` construction (synchronous; harmless).
+
+## Hard invariants (breaking these breaks user data)
+
+- **Byte-preserving output:** untouched lines must stay byte-identical, including comments, order, spacing before values, trailing commas, BOM, newline style, and *count* of trailing newlines. Parsers keep every raw line; `Setting` stores `LinePrefix/RawValue/LineSuffix` so `Update` rewrites only its own line. `RoundTrip_Unchanged_IsByteIdentical` tests this — run tests after any parser change.
+- Only ever write the two config files (`Path + ".bak"` backup, temp file + atomic move). Never touch other files in that folder (e.g. `spawnregions.lua`).
+- `ConfigFile.OriginalText` = the text currently on disk *as seen by the app*. `Save` no-ops when `Render() == OriginalText` and refreshes `OriginalText` after writing; `.bak` must always hold the true pre-last-save content. `Save` refuses to write if disk differs from `OriginalText` (server rewrote it meanwhile) — pure write-path invariant, do not bypass it in the VM by writing files directly.
+- Dirty-confirm: `MainViewModel` takes `Func<Task<bool>> confirmDiscard` (injected in `App.axaml.cs` with the MainWindow as dialog owner). Server-switch denial reverts the ComboBox selection using the `_suppress` guard — keep the `_loading`/`_suppress` flags correct when touching selection logic.
+- No releases, tags, or publishes without explicit user consent (plain `git push` of master is fine). Ask at milestones.
+
+## Non-obvious architecture facts
+
+- **Categories don't exist in the files.** They are authored in `Config/CategoryMap.cs` (ini keys → category; lua: top-level keys by name, nested sections via `LuaSections`, unknown nested sections → "Mods", unknown keys → "Other"). The order arrays in that file drive display order; `BuildGroups` drops categories not listed in the order array's content — every category must end in "Other".
+- **Two panes per tab:** master-detail (selected category) plus a flat "matches" pane for search, toggled by `IsSearching`. Flat lists hold SettingVMs from *all* categories; row visibility in the detail pane is `SettingVM.IsVisible`, maintained by `CollectMatch` — keep both consistent.
+- **Avalonia perf trap:** `ItemsControl` has no virtualization by default. All four right-hand panes wrap an explicit `ItemsPanel` of `VirtualizingStackPanel` inside a manual `ScrollViewer` — removing that caused a measured 316 ms first tab switch (75 ms with it). Left panes are `ListBox` (virtualized by default).
+- **Control widths are a convention:** numeric 184px + `ButtonSpinnerLocation="Left"`, text 320px, enum MinWidth 250, key label MinWidth 140. Keep consistent across the four row templates in `MainWindow.axaml`.
+- Editing side-effect chain: setting a VM property (`NumberValue`, `IsChecked`, `Text`…) *immediately* writes through `ConfigFile.Update` and marks dirty. Constructor assignments deliberately don't (initial `[ObservableProperty]` field sets don't raise `OnChanged`) — that's why an enum value outside its comment list shows an empty dropdown instead of rewriting a user's value. Tests pin this.
+- `EnumSettingVM` options come from comments matching `N = label`; `Min:`/`Max:` in comments become numeric bounds.
+- `ConfirmWindow` is hand-rolled (no Avalonia dialog dependency); `OnClosing` clears `IsDirty` before re-`Close()` to avoid a re-entrant cancel loop.
+
+## Testing quirks
+
+- Fixtures in `PZConfigurator.Tests/TestData/` are copies of a real server's files. If Project Zomboid adds settings, refresh them from the real folder.
+- VM tests build fake servers (`a`/`b` ini+lua) in a temp dir and use `SetFolder`; async selection switches use `WaitUntil` polling (≤2.5 s).
+- `InternalsVisibleTo("PZConfigurator.Tests")` enables testing `MainViewModel.BuildGroups` directly.
+
+## Windows-only dev checks
+
+UI scripts in `tools/` drive the real window via UIA + SendInput. Avalonia TabItems
+expose no `SelectionItemPattern` — click tab-header coordinates instead. Tests can't
+catch UI bugs; run the relevant script after XAML changes.
