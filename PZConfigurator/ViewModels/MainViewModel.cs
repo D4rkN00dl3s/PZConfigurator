@@ -331,6 +331,9 @@ public partial class MainViewModel : ObservableObject
             }
             IsDirty = false;
             Title = "PZConfigurator";
+            foreach (var g in IniGroups.Concat(SandboxGroups))
+                foreach (var i in g.Items)
+                    i.IsModified = false;
             Status = "Saved " + DateTime.Now.ToString("HH:mm:ss");
         }
         catch (Exception ex)

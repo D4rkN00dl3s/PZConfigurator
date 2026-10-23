@@ -14,6 +14,13 @@
         <vm:MainViewModel />
     </Design.DataContext>
 
+    <Window.Styles>
+        <!-- yellow label = value changed since load/last save -->
+        <Style Selector="TextBlock.modified">
+            <Setter Property="Background" Value="#66FFD633" />
+        </Style>
+    </Window.Styles>
+
     <Window.DataTemplates>
         <DataTemplate DataType="vm:BoolSettingVM">
             <Border BorderBrush="#28888888" BorderThickness="0,0,0,1" Margin="0,0,0,3"
@@ -21,6 +28,7 @@
                 <Grid ColumnDefinitions="*,Auto" Margin="0,2">
                     <TextBlock Text="{Binding Key}" MinWidth="140" TextWrapping="Wrap"
                                VerticalAlignment="Center" FontWeight="Medium"
+                               Classes.modified="{Binding IsModified}"
                                ToolTip.Tip="{Binding Tooltip}" />
                     <CheckBox Grid.Column="1" HorizontalAlignment="Right" IsChecked="{Binding IsChecked}" />
                 </Grid>
@@ -32,6 +40,7 @@
                 <Grid ColumnDefinitions="*,250" Margin="0,2">
                     <TextBlock Text="{Binding Key}" MinWidth="140" TextWrapping="Wrap"
                                VerticalAlignment="Center" FontWeight="Medium"
+                               Classes.modified="{Binding IsModified}"
                                ToolTip.Tip="{Binding Tooltip}" />
                     <ComboBox Grid.Column="1" HorizontalAlignment="Right" MinWidth="250"
                               ItemsSource="{Binding Items}"
@@ -47,6 +56,7 @@
                 <Grid ColumnDefinitions="*,184" Margin="0,2">
                     <TextBlock Text="{Binding Key}" MinWidth="140" TextWrapping="Wrap"
                                VerticalAlignment="Center" FontWeight="Medium"
+                               Classes.modified="{Binding IsModified}"
                                ToolTip.Tip="{Binding Tooltip}" />
                     <NumericUpDown Grid.Column="1" HorizontalAlignment="Right" Width="184"
                                    ButtonSpinnerLocation="Left"
@@ -62,6 +72,7 @@
                 <Grid ColumnDefinitions="*,320" Margin="0,2">
                     <TextBlock Text="{Binding Key}" MinWidth="140" TextWrapping="Wrap"
                                VerticalAlignment="Center" FontWeight="Medium"
+                               Classes.modified="{Binding IsModified}"
                                ToolTip.Tip="{Binding Tooltip}" />
                     <TextBox Grid.Column="1" HorizontalAlignment="Right" Width="320"
                              Text="{Binding Text}" IsReadOnly="{Binding IsReadOnly}" />

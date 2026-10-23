@@ -23,9 +23,13 @@ public abstract partial class SettingVM : ObservableObject
         _markDirty = markDirty;
     }
 
+    [ObservableProperty]
+    private bool _isModified; // changed since load/save; highlighted in the UI
+
     protected void Write(string newValue)
     {
         File.Update(Setting, newValue);
+        IsModified = true;
         _markDirty();
     }
 
