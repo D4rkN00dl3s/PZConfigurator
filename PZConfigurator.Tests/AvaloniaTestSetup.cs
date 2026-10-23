@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Headless;
 
 namespace PZConfigurator.Tests;
 
@@ -12,6 +13,9 @@ public static class AvaloniaTestSetup
     {
         if (_done) return;
         _done = true;
-        AppBuilder.Configure<App>().UsePlatformDetect().SetupWithoutStarting();
+        // headless: no window/display needed (Linux CI runners have no X server)
+        AppBuilder.Configure<App>()
+            .UseHeadless(new Avalonia.Headless.AvaloniaHeadlessPlatformOptions())
+            .SetupWithoutStarting();
     }
 }
