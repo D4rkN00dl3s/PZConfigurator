@@ -108,4 +108,26 @@ public class MainViewModelTests : IDisposable
             await Task.Delay(25);
         if (!condition()) throw new TimeoutException("timed out waiting for: " + what);
     }
+
+    [Fact]
+    public async Task Save_DoesNotClobberFileChangedOnDisk()
+    {
+        var vm = new MainViewModel();
+        await vm.SetFolder(_dir);
+        var number = vm.IniGroups.SelectMany(g => g.Items)
+            .OfType<NumberSettingVM>().First(n => n.Key == "MaxPlayers");
+        number.NumberValue = 10; // dirty edit
+
+        // the server rewrites the config while the app holds its own copy
+        var iniPath = Path.Combine(_dir, "a.ini");
+        File.AppendAllText(iniPath, "ExtraKey=5\r\n");
+        var changedOnDisk = File.ReadAllText(iniPath);
+
+        vm.SaveCommand.Execute(null);
+
+        Assert.Equal(changedOnDisk, File.ReadAllText(iniPath)); // disk version untouched
+        Assert.False(File.Exists(iniPath + ".bak")); // nothing written at all
+        Assert.Contains("Refresh", vm.Status);
+        Assert.True(vm.IsDirty); // edits still pending, nothing lost silently
+    }
 }

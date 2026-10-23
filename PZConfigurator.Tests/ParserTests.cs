@@ -1,4 +1,5 @@
 using PZConfigurator.Config;
+using PZConfigurator.ViewModels;
 using Xunit;
 
 namespace PZConfigurator.Tests;
@@ -138,6 +139,31 @@ public class ParserTests
         var file = ConfigParser.LoadIni(iniPath);
         ConfigParser.Save(file);
         Assert.Equal("PVP=true\r\n\r\n", File.ReadAllText(iniPath));
+
+        Directory.Delete(dir, true);
+    }
+
+    [Fact]
+    public void LoadingOutOfRangeEnumValue_DoesNotRewriteFileOrDirty()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "pzcfg-test-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        var iniPath = Path.Combine(dir, "a.ini");
+        // stored value 9 is not in the comment list 1..3 (happens with mods / older configs)
+        File.WriteAllText(iniPath, "# 1 = Foo\n# 2 = Bar\n# 3 = Baz\nEnKey=9\n");
+        var original = File.ReadAllText(iniPath);
+
+        var file = ConfigParser.LoadIni(iniPath);
+        var setting = file.Settings.First(s => s.Key == "EnKey");
+        Assert.Equal(SettingKind.Enum, setting.Kind);
+
+        var wasDirty = false;
+        var vm = SettingVMFactory.Create(file, setting, () => wasDirty = true);
+        var enumVm = Assert.IsType<EnumSettingVM>(vm);
+        // must not write anything and must not select a random option
+        Assert.Equal(-1, enumVm.SelectedIndex);
+        Assert.False(wasDirty);
+        Assert.Equal(original, file.Render());
 
         Directory.Delete(dir, true);
     }

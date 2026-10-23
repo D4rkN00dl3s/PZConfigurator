@@ -217,9 +217,11 @@ public static partial class ConfigParser
 
     static List<string> ReadLines(string path, out string newLine, out bool bom, out string original, out int trailingNewlines)
     {
-        original = File.ReadAllText(path);
-        bom = Encoding.UTF8.GetPreamble() is var p && p.Length > 0 &&
-              File.ReadAllBytes(path).AsSpan().StartsWith(p);
+        var bytes = File.ReadAllBytes(path);
+        bom = bytes.AsSpan().StartsWith(Encoding.UTF8.GetPreamble());
+        // GetString doesn't strip the BOM; ReadAllText did. Render/Save re-add the preamble.
+        original = new UTF8Encoding(false)
+            .GetString(bom ? bytes.AsSpan(Encoding.UTF8.GetPreamble().Length) : bytes);
         newLine = original.Contains("\r\n") ? "\r\n" : "\n";
         var normalized = original.Replace("\r\n", "\n");
         trailingNewlines = normalized.Length - normalized.TrimEnd('\n').Length;

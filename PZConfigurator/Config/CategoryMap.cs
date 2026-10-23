@@ -130,7 +130,6 @@ public static class CategoryMap
         ["BadWordPolicy"] = "Word Filter", ["BadWordReplacement"] = "Word Filter",
 
         // Logs
-        ["PVPLogToolChat"] = "Logs", ["PVPLogToolFile"] = "Logs",
         ["ClientCommandFilter"] = "Logs", ["ClientActionLogs"] = "Logs",
         ["PerkLogs"] = "Logs", ["AnnounceDeath"] = "Logs",
         ["AnnounceAnimalDeath"] = "Logs", ["BanKickGlobalSound"] = "Logs",
@@ -261,7 +260,7 @@ public static class CategoryMap
         ["FirearmWeatherMultiplier"] = "Firearms",
         ["FirearmHeadGearEffect"] = "Firearms",
         ["NightDarkness"] = "World", ["NightLength"] = "World",
-        ["ZombieHealthImpact"] = "Zombie", ["BloodSplatLifespanDays"] = "World",
+        ["ZombieHealthImpact"] = "Zombie",
 
         // World events
         ["Helicopter"] = "Events", ["MetaEvent"] = "Events",

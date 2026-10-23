@@ -252,6 +252,12 @@ public partial class MainViewModel : ObservableObject
             foreach (var f in _files)
             {
                 if (f.Render() == f.OriginalText) continue;
+                // the cache is from load time; the server may have rewritten the file meanwhile
+                if (File.Exists(f.Path) && File.ReadAllText(f.Path) != f.OriginalText)
+                {
+                    Status = Path.GetFileName(f.Path) + " changed on disk since loading (server restart?) — press Refresh to re-read it before saving, or your other changes would be lost";
+                    return;
+                }
                 ConfigParser.Save(f);
             }
             IsDirty = false;
