@@ -106,6 +106,17 @@ public partial class MainViewModel : ObservableObject
             if (SelectedServer == null)
                 Status = "No servers found (need name.ini + name_SandboxVars.lua) in " + Folder;
         }
+        catch (UnauthorizedAccessException)
+        {
+            // typical on Linux: dedicated-server home (e.g. /home/pz) is mode 700
+            SelectedServer = null;
+            Status = $"Access denied on {Folder}. The server user's home is private on Linux — run the chmod/setfacl commands from the README section 'Linux: opening another user's Zomboid folder'.";
+        }
+        catch (Exception ex)
+        {
+            SelectedServer = null;
+            Status = "Error listing folder: " + ex.Message;
+        }
         finally
         {
             _loading = false;

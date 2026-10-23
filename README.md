@@ -39,6 +39,27 @@ Output: `PZConfigurator/bin/Release/net10.0/<rid>/publish/` (~48 MB per target).
 
 Known limits: `Mods=` is a plain text field; settings the parsers can't classify appear as text boxes or under "Other".
 
+## Linux: opening another user's Zomboid folder
+
+On a dedicated Linux server it's standard practice to run the PZ server under a separate user (e.g. `pz`), so the configs live in `/home/pz/Zomboid`. That home directory is private (`chmod 700` by default), which is why your desktop user — sudoers or not — gets "permission denied": sudo rights are irrelevant here, only file permissions matter.
+
+Grant your desktop user access (replace `pz` and `martin` with your users):
+
+```sh
+# Option A — simplest: make the paths reachable
+sudo chmod o+x /home/pz                     # traverse, but not list
+sudo chmod o+rx /home/pz/Zomboid/Server     # read + traverse
+sudo chmod -R o+rwX /home/pz/Zomboid/Server # the app must also be able to WRITE (Save)
+```
+
+```sh
+# Option B — more precise, affects only your user:
+sudo setfacl -m u:martin:x /home/pz
+sudo setfacl -R -m u:martin:rwX /home/pz/Zomboid/Server
+```
+
+New files created by the server later inherit default permissions, so Option A/B applied once is normally enough; if the server ever recreates a config file as `600`, re-run the command or fall back to a **shared group** (`sudo groupadd srvshare; sudo usermod -aG srvshare pz martin; sudo chgrp -R srvshare /home/pz/Zomboid/Server` + `chmod -R g+rwX`, new files need a setgid bit or a matching umask — see your distro docs). After that, pick the folder via **Browse…** in the app; `PZConfigurator` never needs to run as root or as the server user.
+
 ## License
 
 [MIT](LICENSE)
