@@ -145,6 +145,7 @@
                          PlaceholderText="Search settings... (Esc clears, Ctrl+F focuses)"
                          Text="{Binding SearchText}" />
                 <Button Grid.Column="1" Content="×" Width="30" Padding="0,0,0,2"
+                        VerticalAlignment="Stretch"
                         HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
                         FontSize="16" FontFamily="Segoe UI Symbol"
                         IsVisible="{Binding HasSearchText}"
@@ -172,8 +173,8 @@
                         </ListBox.ItemTemplate>
                     </ListBox>
                     <Grid Grid.Column="1">
-                        <ScrollViewer IsVisible="{Binding IsSearching}" HorizontalScrollBarVisibility="Auto">
-                            <ItemsControl ItemsSource="{Binding IniMatches}" Margin="8,0,10,0">
+                        <ScrollViewer IsVisible="{Binding IsSearching}" HorizontalScrollBarVisibility="Auto" Margin="0,0,16,0">
+                            <ItemsControl ItemsSource="{Binding IniMatches}" Margin="8,0,4,0">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <VirtualizingStackPanel />
@@ -181,8 +182,8 @@
                             </ItemsControl.ItemsPanel>
                         </ItemsControl>
                         </ScrollViewer>
-                        <ScrollViewer IsVisible="{Binding !IsSearching}" HorizontalScrollBarVisibility="Auto">
-                            <ItemsControl ItemsSource="{Binding IniSelected.Items}" Margin="8,0,10,0">
+                        <ScrollViewer IsVisible="{Binding !IsSearching}" HorizontalScrollBarVisibility="Auto" Margin="0,0,16,0">
+                            <ItemsControl ItemsSource="{Binding IniSelected.Items}" Margin="8,0,4,0">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <VirtualizingStackPanel />
@@ -190,6 +191,8 @@
                             </ItemsControl.ItemsPanel>
                         </ItemsControl>
                         </ScrollViewer>
+                        <TextBlock IsVisible="{Binding HasNoMatches}" Text="{Binding NoMatchesText}"
+                                   HorizontalAlignment="Center" Margin="0,24,0,0" Foreground="#FF9AA0A6" />
                     </Grid>
                 </Grid>
             </TabItem>
@@ -224,8 +227,8 @@
                             </ComboBox>
                             <Button Content="Apply" Command="{Binding ApplyTemplateCommand}" Margin="6,0,0,0" />
                         </StackPanel>
-                        <ScrollViewer Grid.Row="1" IsVisible="{Binding IsSearching}" HorizontalScrollBarVisibility="Auto">
-                            <ItemsControl ItemsSource="{Binding SandboxMatches}" Margin="8,0,10,0">
+                        <ScrollViewer Grid.Row="1" IsVisible="{Binding IsSearching}" HorizontalScrollBarVisibility="Auto" Margin="0,0,16,0">
+                            <ItemsControl ItemsSource="{Binding SandboxMatches}" Margin="8,0,4,0">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <VirtualizingStackPanel />
@@ -233,8 +236,8 @@
                             </ItemsControl.ItemsPanel>
                         </ItemsControl>
                         </ScrollViewer>
-                        <ScrollViewer Grid.Row="1" IsVisible="{Binding !IsSearching}" HorizontalScrollBarVisibility="Auto">
-                            <ItemsControl ItemsSource="{Binding SandboxSelected.Items}" Margin="8,0,10,0">
+                        <ScrollViewer Grid.Row="1" IsVisible="{Binding !IsSearching}" HorizontalScrollBarVisibility="Auto" Margin="0,0,16,0">
+                            <ItemsControl ItemsSource="{Binding SandboxSelected.Items}" Margin="8,0,4,0">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <VirtualizingStackPanel />
@@ -242,6 +245,8 @@
                             </ItemsControl.ItemsPanel>
                         </ItemsControl>
                         </ScrollViewer>
+                        <TextBlock Grid.Row="1" IsVisible="{Binding HasNoMatches}" Text="{Binding NoMatchesText}"
+                                   HorizontalAlignment="Center" Margin="0,24,0,0" Foreground="#FF9AA0A6" />
                     </Grid>
                 </Grid>
             </TabItem>

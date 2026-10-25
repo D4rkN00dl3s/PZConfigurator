@@ -96,6 +96,12 @@ public partial class MainViewModel : ObservableObject
     private bool _isStatusWarn;
 
     [ObservableProperty]
+    private bool _hasNoMatches; // the search/modified panes show a "nothing found" text
+
+    [ObservableProperty]
+    private string _noMatchesText = "";
+
+    [ObservableProperty]
     private string _title = "PZConfigurator";
 
     [ObservableProperty]
@@ -365,6 +371,12 @@ public partial class MainViewModel : ObservableObject
     {
         var q = SearchText?.Trim();
         var total = IniMatches.Count + SandboxMatches.Count;
+        HasNoMatches = IsSearching && total == 0;
+        NoMatchesText = HasNoMatches
+            ? (string.IsNullOrEmpty(q)
+                ? "Nothing modified yet — change a setting to see it here"
+                : $"No settings match \"{q}\"")
+            : "";
         if (!string.IsNullOrEmpty(q))
             Status = $"Searching \"{q}\": {total} match{(total == 1 ? "" : "es")}"
                 + (OnlyModified ? " among modified" : "");
@@ -382,7 +394,7 @@ public partial class MainViewModel : ObservableObject
         // item.IsVisible drives the master-detail pane; flat matched lists are pre-filtered
         item.IsVisible = match;
         // the category is only relevant while the flat matches pane is up
-        item.MatchCategory = match && IsSearching ? category + " · " : null;
+        item.MatchCategory = match && IsSearching ? category : null;
         if (match && IsSearching) target.Add(item);
     }
 

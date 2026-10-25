@@ -101,12 +101,33 @@ public class FilterTests : IDisposable
         var tagged = vm.SandboxGroups.Concat(vm.IniGroups)
             .SelectMany(g => g.Items).Where(i => i.HasMatchCategory).ToList();
         Assert.NotEmpty(tagged);
-        Assert.All(tagged, i => Assert.EndsWith(" · ", i.MatchCategory));
+        Assert.All(tagged, i => Assert.DoesNotContain("·", i.MatchCategory));
         Assert.Equal(vm.IniMatches.Count + vm.SandboxMatches.Count, tagged.Count);
 
         vm.SearchText = "";
         Assert.DoesNotContain(vm.SandboxGroups.Concat(vm.IniGroups)
             .SelectMany(g => g.Items), i => i.HasMatchCategory);
+    }
+
+    [Fact]
+    public async Task Search_NoMatches_ShowsEmptyState()
+    {
+        var vm = new MainViewModel();
+        await vm.SetFolder(_dir);
+
+        vm.SearchText = "ZzzNoSuchThing";
+        Assert.True(vm.HasNoMatches);
+        Assert.StartsWith("No settings match", vm.NoMatchesText);
+
+        // modified-only with no changes: different wording, same empty state
+        vm.SearchText = "";
+        vm.OnlyModified = true;
+        Assert.True(vm.HasNoMatches);
+        Assert.StartsWith("Nothing modified", vm.NoMatchesText);
+
+        vm.OnlyModified = false;
+        vm.SearchText = "Port";
+        Assert.False(vm.HasNoMatches);
     }
 
     [Fact]
