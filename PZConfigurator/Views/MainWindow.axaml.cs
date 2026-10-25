@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using Avalonia.VisualTree;
 using PZConfigurator.ViewModels;
 
 namespace PZConfigurator.Views;
@@ -105,10 +106,18 @@ public partial class MainWindow : Window
     // double-tap anywhere on a boolean row toggles it (wired in the BoolSettingVM template)
     private void BoolRow_DoubleTapped(object? sender, TappedEventArgs e)
     {
-        // rapid presses on the glyph itself are the CheckBox's own click toggles; leave them alone
-        if (e.Source is CheckBox) return;
+        // clicks on the glyph itself belong to the CheckBox (its template internals raise the
+        // tap, so the Source isn't the CheckBox control — check the visual ancestry)
+        if (e.Source is Visual v && InCheckBox(v)) return;
         if (sender is Border { DataContext: BoolSettingVM b }) b.IsChecked = !b.IsChecked;
         e.Handled = true;
+    }
+
+    private static bool InCheckBox(Visual? v)
+    {
+        for (; v != null; v = v.GetVisualParent())
+            if (v is CheckBox) return true;
+        return false;
     }
 
     private async void Browse_Click(object? sender, RoutedEventArgs e)
