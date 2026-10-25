@@ -1,3 +1,4 @@
+using PZConfigurator.Config;
 using PZConfigurator.ViewModels;
 using Xunit;
 
@@ -119,5 +120,26 @@ public class FilterTests : IDisposable
 
         Assert.Contains($"Ready to apply \"Apocalypse\"", vm.Status);
         Assert.Contains($"{apocalypse.Values.Count} settings found", vm.Status);
+    }
+
+    [Fact]
+    public async Task TemplateApply_NoEffectiveChanges_ReportsNoChanges()
+    {
+        var vm = new MainViewModel();
+        await vm.SetFolder(_dir);
+        // template built from the CURRENT on-disk values so every assignment is a no-op
+        var b = vm.SandboxGroups.SelectMany(g => g.Items).OfType<BoolSettingVM>().First(i => i.IsVisible);
+        var n = vm.SandboxGroups.SelectMany(g => g.Items).OfType<NumberSettingVM>().First(i => i.IsVisible && i.IsInteger);
+        var values = new Dictionary<string, string>
+        {
+            [b.Key] = b.IsChecked ? "true" : "false",
+            [n.Key] = n.NumberValue!.Value.ToString(System.Globalization.CultureInfo.InvariantCulture),
+        };
+        vm.TemplateSelected = new SandboxTemplate { Name = "Same", Values = values };
+
+        vm.ApplyTemplateCommand.Execute(null);
+
+        Assert.Contains("no changes", vm.Status);
+        Assert.False(vm.IsDirty);
     }
 }

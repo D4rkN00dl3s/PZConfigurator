@@ -151,9 +151,13 @@ public partial class MainViewModel : ObservableObject
             else missing++;
         }
         ApplyFilter(); // update visibility first if "modified only" is on
-        Status = $"Applied \"{t.Name}\": {applied} values set"
-            + (missing > 0 ? $", {missing} not found" : "")
-            + " — review, then Save";
+        // nothing actually changed if every value already matched — don't send the user hunting
+        Status = IsDirty
+            ? $"Applied \"{t.Name}\": {applied} values set"
+                + (missing > 0 ? $", {missing} not found" : "")
+                + " — review, then Save"
+            : $"Applied \"{t.Name}\": no changes — config already matches this template"
+                + (missing > 0 ? $" ({missing} not found)" : "");
     }
 
     // assigns the template value through the write-through VM; returns false when

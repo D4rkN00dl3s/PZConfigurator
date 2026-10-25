@@ -144,7 +144,9 @@
                 <TextBox x:Name="SearchBox"
                          PlaceholderText="Search settings... (Esc clears, Ctrl+F focuses)"
                          Text="{Binding SearchText}" />
-                <Button Grid.Column="1" Content="×" MinWidth="30" FontSize="14" Margin="6,0,0,0"
+                <Button Grid.Column="1" Content="×" Width="30" Padding="0,0,0,2"
+                        HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                        FontSize="16" FontFamily="Segoe UI Symbol"
                         IsVisible="{Binding HasSearchText}"
                         Command="{Binding ClearSearchCommand}"
                         ToolTip.Tip="Clear search" />
