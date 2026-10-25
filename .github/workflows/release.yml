@@ -26,11 +26,20 @@ jobs:
           --self-contained true -p:PublishSingleFile=true
           -p:EnableCompressionInSingleFile=true
           -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=embedded
-      - run: |
+      - name: zip (posix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
           cd PZConfigurator/bin/Release/net10.0/${{ matrix.rid }}/publish
           rm -f *.pdb
           zip -r "$GITHUB_WORKSPACE/PZConfigurator-${{ matrix.rid }}.zip" .
-        shell: bash
+      - name: zip (windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Remove-Item "PZConfigurator/bin/Release/net10.0/win-x64/publish/*.pdb" -ErrorAction SilentlyContinue
+          Compress-Archive -Path "PZConfigurator/bin/Release/net10.0/win-x64/publish/*" `
+            -DestinationPath "PZConfigurator-win-x64.zip" -Force
       - uses: actions/upload-artifact@v4
         with:
           name: PZConfigurator-${{ matrix.rid }}
