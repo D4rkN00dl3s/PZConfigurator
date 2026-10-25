@@ -31,24 +31,42 @@ dotnet test                           # tests
 
 ## Linux: opening another user's Zomboid folder
 
-On a dedicated Linux server it's standard practice to run the PZ server under a separate user (e.g. `pz`), so the configs live in `/home/pz/Zomboid`. That home directory is private (`chmod 700` by default), which is why your desktop user — sudoers or not — gets "permission denied": sudo rights are irrelevant here, only file permissions matter.
+On a dedicated Linux server it's standard practice to run the PZ server under a separate user (e.g. `pz`), so the configs live in `/home/pz/Zomboid`. That home directory is private (`chmod 700` by default), and so is `Zomboid` itself — which is why your desktop user — sudoers or not — gets "permission denied": sudo rights are irrelevant here, only file permissions matter.
 
 Grant your desktop user access (replace `pz` and `usr` with your users):
 
 ```sh
-# Option A — simplest: make the paths reachable
+# Option B — recommended: affects only your user, not "others"
+sudo setfacl -m u:usr:x /home/pz              # traverse, but not list
+sudo setfacl -m u:usr:x /home/pz/Zomboid      # traverse, but not list
+sudo setfacl -R -m u:usr:rwX /home/pz/Zomboid/Server # read + write + traverse
+sudo setfacl -R -d -m u:usr:rwX /home/pz/Zomboid/Server # default ACL: files the server creates later stay accessible
+```
+
+```sh
+# Option A — simplest, but grants access to "others" (every local user and
+# service account). The configs may contain admin, RCON and server passwords,
+# so only use this on a single-user machine:
 sudo chmod o+x /home/pz                     # traverse, but not list
+sudo chmod o+x /home/pz/Zomboid             # traverse, but not list
 sudo chmod o+rx /home/pz/Zomboid/Server     # read + traverse
 sudo chmod -R o+rwX /home/pz/Zomboid/Server # the app must also be able to WRITE (Save)
 ```
 
-```sh
-# Option B — more precise, affects only your user:
-sudo setfacl -m u:usr:x /home/pz
-sudo setfacl -R -m u:usr:rwX /home/pz/Zomboid/Server
-```
+Option A (plain `chmod` on existing files) is applied once and is enough; **Option B needs the `-d` default ACL line above** — without it, files the server creates *after* you run `setfacl` would again be inaccessible to you. If the server ever recreates a config file as `600` anyway, re-run the command or fall back to a **shared group** (`sudo groupadd srvshare; sudo usermod -aG srvshare pz usr; sudo chgrp -R srvshare /home/pz/Zomboid/Server` + `chmod -R g+rwX` — see your distro docs). After that, pick the folder via **Browse…** in the app; `PZConfigurator` never needs to run as root or as the server user.
 
-New files created by the server later inherit default permissions, so Option A/B applied once is normally enough; if the server ever recreates a config file as `600`, re-run the command or fall back to a **shared group** (`sudo groupadd srvshare; sudo usermod -aG srvshare pz usr; sudo chgrp -R srvshare /home/pz/Zomboid/Server` + `chmod -R g+rwX` — see your distro docs). After that, pick the folder via **Browse…** in the app; `PZConfigurator` never needs to run as root or as the server user.
+Note that execute-only (`--x`) on `/home/pz` and `/home/pz/Zomboid` allows *traversal but not listing*: file managers (Dolphin etc.) and the **Browse…** dialog cannot click through those directories even though the app itself can. Workarounds:
+
+- **Symlink (recommended):** `ln -s /home/pz/Zomboid/Server ~/pz-server`, then Browse to `~/pz-server`.
+- Type the full path directly (`Ctrl+L` in most file dialogs).
+- Or allow listing: `sudo setfacl -m u:usr:rx /home/pz` (and the same for `/home/pz/Zomboid` if needed).
+
+### Troubleshooting
+
+- `namei -l /home/pz/Zomboid/Server` shows exactly where access stops along the path.
+- `getfacl <dir>` verifies the ACL entries — expect `user:usr:` lines.
+- If `setfacl` is missing, install the `acl` package (name varies by distro).
+- Undo everything: `sudo setfacl -R -b /home/pz/Zomboid/Server` and `sudo setfacl -x u:usr /home/pz /home/pz/Zomboid`.
 
 ## License
 
