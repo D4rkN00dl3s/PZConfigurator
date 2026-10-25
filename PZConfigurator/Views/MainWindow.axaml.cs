@@ -102,6 +102,13 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
+    // double-tap anywhere on a boolean row toggles it (wired in the BoolSettingVM template)
+    private void BoolRow_DoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (sender is Border { DataContext: BoolSettingVM b }) b.IsChecked = !b.IsChecked;
+        e.Handled = true;
+    }
+
     private async void Browse_Click(object? sender, RoutedEventArgs e)
     {
         var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions

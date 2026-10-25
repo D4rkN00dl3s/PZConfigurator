@@ -39,8 +39,10 @@
 
     <Window.DataTemplates>
         <DataTemplate DataType="vm:BoolSettingVM">
+            <!-- Background Transparent: a null-Background Border isn't hit-testable over its fill,
+                 so DoubleTapped would only fire on the text glyph; transparent make the whole row tappable -->
             <Border BorderBrush="#28888888" BorderThickness="0,0,0,1" Margin="0,0,0,3"
-                    IsVisible="{Binding IsVisible}">
+                    Background="Transparent" IsVisible="{Binding IsVisible}" DoubleTapped="BoolRow_DoubleTapped">
                 <Grid ColumnDefinitions="*,Auto" Margin="0,2">
                     <StackPanel VerticalAlignment="Center">
                         <TextBlock Text="{Binding Key}" MinWidth="140" TextWrapping="Wrap" FontWeight="Medium"
@@ -67,7 +69,7 @@
                                    IsVisible="{Binding HasMatchCategory}" />
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
-                        <ComboBox MinWidth="250"
+                        <ComboBox Width="320"
                                   ItemsSource="{Binding Items}"
                                   HorizontalContentAlignment="Left"
                                   SelectedIndex="{Binding SelectedIndex}"
@@ -81,7 +83,7 @@
         <DataTemplate DataType="vm:NumberSettingVM">
             <Border BorderBrush="#28888888" BorderThickness="0,0,0,1" Margin="0,0,0,3"
                     IsVisible="{Binding IsVisible}">
-                <Grid ColumnDefinitions="*,184" Margin="0,2">
+                <Grid ColumnDefinitions="*,320" Margin="0,2">
                     <StackPanel VerticalAlignment="Center">
                         <TextBlock Text="{Binding Key}" MinWidth="140" TextWrapping="Wrap" FontWeight="Medium"
                                    Classes.modified="{Binding IsModified}"
@@ -89,7 +91,7 @@
                         <TextBlock Text="{Binding MatchCategory}" FontSize="11" Foreground="SlateGray"
                                    IsVisible="{Binding HasMatchCategory}" />
                     </StackPanel>
-                    <NumericUpDown Grid.Column="1" HorizontalAlignment="Right" Width="184"
+                    <NumericUpDown Grid.Column="1" HorizontalAlignment="Right" Width="320"
                                    ButtonSpinnerLocation="Left"
                                    Value="{Binding NumberValue}" FormatString="{Binding Format}"
                                    Minimum="{Binding MinValue}" Maximum="{Binding MaxValue}"
