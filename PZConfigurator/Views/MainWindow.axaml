@@ -15,6 +15,11 @@
     </Design.DataContext>
 
     <Window.Styles>
+        <!-- sky-blue text = value differs from the game's vanilla default (Apocalypse preset);
+             listed before .modified so the session-change yellow wins when both flags are set -->
+        <Style Selector="TextBlock.nondefault">
+            <Setter Property="Foreground" Value="#66C2FF" />
+        </Style>
         <!-- yellow text = value changed since load/last save -->
         <Style Selector="TextBlock.modified">
             <Setter Property="Foreground" Value="#FFDD33" />
@@ -47,6 +52,7 @@
                     <StackPanel VerticalAlignment="Center">
                         <TextBlock Text="{Binding Key}" MinWidth="140" TextWrapping="Wrap" FontWeight="Medium"
                                    Classes.modified="{Binding IsModified}"
+                                   Classes.nondefault="{Binding IsNonDefault}"
                                    ToolTip.Tip="{Binding Tooltip}" />
                         <TextBlock Text="{Binding MatchCategory}" FontSize="11" Foreground="SlateGray"
                                    IsVisible="{Binding HasMatchCategory}" />
@@ -64,6 +70,7 @@
                     <StackPanel VerticalAlignment="Center">
                         <TextBlock Text="{Binding Key}" MinWidth="140" TextWrapping="Wrap" FontWeight="Medium"
                                    Classes.modified="{Binding IsModified}"
+                                   Classes.nondefault="{Binding IsNonDefault}"
                                    ToolTip.Tip="{Binding Tooltip}" />
                         <TextBlock Text="{Binding MatchCategory}" FontSize="11" Foreground="SlateGray"
                                    IsVisible="{Binding HasMatchCategory}" />
@@ -87,6 +94,7 @@
                     <StackPanel VerticalAlignment="Center">
                         <TextBlock Text="{Binding Key}" MinWidth="140" TextWrapping="Wrap" FontWeight="Medium"
                                    Classes.modified="{Binding IsModified}"
+                                   Classes.nondefault="{Binding IsNonDefault}"
                                    ToolTip.Tip="{Binding Tooltip}" />
                         <TextBlock Text="{Binding MatchCategory}" FontSize="11" Foreground="SlateGray"
                                    IsVisible="{Binding HasMatchCategory}" />
@@ -106,6 +114,7 @@
                     <StackPanel VerticalAlignment="Center">
                         <TextBlock Text="{Binding Key}" MinWidth="140" TextWrapping="Wrap" FontWeight="Medium"
                                    Classes.modified="{Binding IsModified}"
+                                   Classes.nondefault="{Binding IsNonDefault}"
                                    ToolTip.Tip="{Binding Tooltip}" />
                         <TextBlock Text="{Binding MatchCategory}" FontSize="11" Foreground="SlateGray"
                                    IsVisible="{Binding HasMatchCategory}" />

@@ -46,6 +46,23 @@ public static class TemplateLoader
         return list;
     }
 
+    /// <summary>The values a fresh server ships with (the Apocalypse preset — "Vanilla preset
+    /// from the Project Zomboid game files"). Used to highlight non-default settings.
+    /// Calls Parse so the "values" literalization stays in one place; embedded, so it always exists.</summary>
+    public static Dictionary<string, string> VanillaDefaults()
+    {
+        try
+        {
+            using var stream = AssetLoader.Open(new Uri("avares://PZConfigurator/Templates/Apocalypse.json"));
+            using var doc = JsonDocument.Parse(stream);
+            return Parse(doc.RootElement, "Apocalypse").Values;
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
     public static List<SandboxTemplate> LoadUserFolder(string folder, List<string> errors)
     {
         var list = new List<SandboxTemplate>();

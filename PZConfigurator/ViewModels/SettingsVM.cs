@@ -14,7 +14,7 @@ public abstract partial class SettingVM : ObservableObject
     private readonly Action _markDirty;
     private string _originalRaw; // value at load/save; IsModified compares the current value against this
 
-    protected SettingVM(Setting setting, ConfigFile file, Action markDirty)
+    protected SettingVM(Setting setting, ConfigFile file, Action markDirty, string? defaultRaw = null)
     {
         Setting = setting;
         File = file;
@@ -22,11 +22,19 @@ public abstract partial class SettingVM : ObservableObject
         Label = string.IsNullOrWhiteSpace(setting.Label) ? setting.Key : setting.Label;
         Tooltip = setting.Tooltip;
         _originalRaw = Setting.RawValue;
+        _defaultRaw = string.IsNullOrWhiteSpace(defaultRaw) ? null : defaultRaw.Trim();
+        _isNonDefault = _defaultRaw != null && DiffersDefault(Setting.RawValue);
         _markDirty = markDirty;
     }
 
     [ObservableProperty]
     private bool _isModified; // changed since load/save; highlighted in the UI
+
+    /// <summary>true when the current value differs from the game's vanilla default
+    /// (Apocalypse preset); painted blue so users see pre-existing customizations.</summary>
+    [ObservableProperty]
+    private bool _isNonDefault;
+    private readonly string? _defaultRaw;
 
     protected void Write(string newValue)
     {
@@ -34,7 +42,17 @@ public abstract partial class SettingVM : ObservableObject
         // yellow only when the value actually differs from the last loaded/saved state,
         // so toggling a bool on and off doesn't look like a pending change
         IsModified = newValue.Trim() != _originalRaw.Trim();
+        IsNonDefault = _defaultRaw != null && DiffersDefault(newValue);
         _markDirty();
+    }
+
+    // booleans may carry any casing in a hand-edited file; numbers/enums are written canonically
+    private bool DiffersDefault(string current)
+    {
+        var raw = current.Trim();
+        return Setting.Kind == SettingKind.Bool
+            ? !string.Equals(raw, _defaultRaw, StringComparison.OrdinalIgnoreCase)
+            : !string.Equals(raw, _defaultRaw, StringComparison.Ordinal);
     }
 
     /// <summary>baseline reset after Save: the written values are now what's on disk</summary>
@@ -63,8 +81,8 @@ public partial class BoolSettingVM : SettingVM
     [ObservableProperty]
     private bool _isChecked;
 
-    public BoolSettingVM(Setting s, ConfigFile file, Action markDirty)
-        : base(s, file, markDirty)
+    public BoolSettingVM(Setting s, ConfigFile file, Action markDirty, string? defaultRaw = null)
+        : base(s, file, markDirty, defaultRaw)
     {
         _isChecked = s.RawValue.Trim().Equals("true", StringComparison.OrdinalIgnoreCase);
     }
@@ -84,8 +102,8 @@ public partial class EnumSettingVM : SettingVM
     [ObservableProperty]
     private string? _outOfRangeText;
 
-    public EnumSettingVM(Setting s, ConfigFile file, Action markDirty)
-        : base(s, file, markDirty)
+    public EnumSettingVM(Setting s, ConfigFile file, Action markDirty, string? defaultRaw = null)
+        : base(s, file, markDirty, defaultRaw)
     {
         _options = s.Options;
         Items = _options.Select(o => o.Label).ToList();
@@ -128,8 +146,8 @@ public partial class NumberSettingVM : SettingVM
     [ObservableProperty]
     private double? _numberValue;
 
-    public NumberSettingVM(Setting s, ConfigFile file, Action markDirty, bool isInteger)
-        : base(s, file, markDirty)
+    public NumberSettingVM(Setting s, ConfigFile file, Action markDirty, bool isInteger, string? defaultRaw = null)
+        : base(s, file, markDirty, defaultRaw)
     {
         IsInteger = isInteger;
         MinValue = s.Min ?? double.MinValue;
@@ -153,8 +171,8 @@ public partial class TextSettingVM : SettingVM
     [ObservableProperty]
     private string _text = "";
 
-    public TextSettingVM(Setting s, ConfigFile file, Action markDirty)
-        : base(s, file, markDirty)
+    public TextSettingVM(Setting s, ConfigFile file, Action markDirty, string? defaultRaw = null)
+        : base(s, file, markDirty, defaultRaw)
     {
         IsReadOnly = s.ReadOnly;
         _text = s.RawValue;
@@ -196,17 +214,17 @@ public sealed class SettingGroupVM : ObservableObject
 
 public static class SettingVMFactory
 {
-    public static SettingVM Create(ConfigFile file, Setting s, Action markDirty)
+    public static SettingVM Create(ConfigFile file, Setting s, Action markDirty, string? defaultRaw = null)
     {
         if (s.ReadOnly)
-            return new TextSettingVM(s, file, markDirty);
+            return new TextSettingVM(s, file, markDirty, defaultRaw);
         return s.Kind switch
         {
-        SettingKind.Bool => new BoolSettingVM(s, file, markDirty),
-        SettingKind.Enum => new EnumSettingVM(s, file, markDirty),
-        SettingKind.Int => new NumberSettingVM(s, file, markDirty, isInteger: true),
-        SettingKind.Float => new NumberSettingVM(s, file, markDirty, isInteger: false),
-        _ => new TextSettingVM(s, file, markDirty),
+        SettingKind.Bool => new BoolSettingVM(s, file, markDirty, defaultRaw),
+        SettingKind.Enum => new EnumSettingVM(s, file, markDirty, defaultRaw),
+        SettingKind.Int => new NumberSettingVM(s, file, markDirty, isInteger: true, defaultRaw),
+        SettingKind.Float => new NumberSettingVM(s, file, markDirty, isInteger: false, defaultRaw),
+        _ => new TextSettingVM(s, file, markDirty, defaultRaw),
         };
     }
 }

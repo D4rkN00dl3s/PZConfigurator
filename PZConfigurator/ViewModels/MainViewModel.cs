@@ -309,9 +309,10 @@ public partial class MainViewModel : ObservableObject
             var ini = ConfigParser.LoadIni(iniPath);
             var lua = ConfigParser.LoadLua(luaPath);
             _files = [ini, lua];
+            var defaults = TemplateLoader.VanillaDefaults();
 
-            BuildGroups(ini, ini.Groups, IniGroups, CategoryMap.IniOrder, isIni: true, markDirty);
-            BuildGroups(lua, lua.Groups, SandboxGroups, CategoryMap.SandboxOrder, isIni: false, markDirty);
+            BuildGroups(ini, ini.Groups, IniGroups, CategoryMap.IniOrder, isIni: true, markDirty, defaults);
+            BuildGroups(lua, lua.Groups, SandboxGroups, CategoryMap.SandboxOrder, isIni: false, markDirty, defaults);
             IniSelected = IniGroups.FirstOrDefault();
             SandboxSelected = SandboxGroups.FirstOrDefault();
 
@@ -329,7 +330,7 @@ public partial class MainViewModel : ObservableObject
     internal static void BuildGroups(
         ConfigFile file, IEnumerable<SettingGroup> source,
         ObservableCollection<SettingGroupVM> target, string[] order,
-        bool isIni, Action markDirty)
+        bool isIni, Action markDirty, Dictionary<string, string>? defaults = null)
     {
         var byCategory = new Dictionary<string, List<Setting>>();
         foreach (var group in source)
@@ -348,7 +349,8 @@ public partial class MainViewModel : ObservableObject
         foreach (var cat in order.Where(byCategory.ContainsKey))
         {
             target.Add(new SettingGroupVM(cat,
-                byCategory[cat].Select(s => SettingVMFactory.Create(file, s, markDirty)).ToList()));
+                byCategory[cat].Select(s => SettingVMFactory.Create(file, s, markDirty,
+                    defaults?.GetValueOrDefault(s.Key))).ToList()));
         }
     }
 

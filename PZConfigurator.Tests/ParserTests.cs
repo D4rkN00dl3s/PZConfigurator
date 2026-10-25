@@ -167,4 +167,26 @@ public class ParserTests
 
         Directory.Delete(dir, true);
     }
+
+    [Fact]
+    public void NonDefaultSetting_IsFlagged_AndClearedWhenRevertedToDefault()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "pzcfg-test-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        var iniPath = Path.Combine(dir, "a.ini");
+        File.WriteAllText(iniPath, "EnKey=2\n");
+        var file = ConfigParser.LoadIni(iniPath);
+        var setting = file.Settings.First(s => s.Key == "EnKey");
+
+        var vm = Assert.IsType<NumberSettingVM>(SettingVMFactory.Create(file, setting, () => { }, defaultRaw: "2"));
+        Assert.False(vm.IsNonDefault); // matches vanilla default
+
+        vm.NumberValue = 3;
+        Assert.True(vm.IsNonDefault);
+
+        vm.NumberValue = 2;
+        Assert.False(vm.IsNonDefault);
+
+        Directory.Delete(dir, true);
+    }
 }
