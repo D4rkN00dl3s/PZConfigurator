@@ -30,7 +30,7 @@ Test runs on Windows open the user's real Zomboid folder during `MainViewModel` 
 - **Categories don't exist in the files.** They are authored in `Config/CategoryMap.cs` (ini keys → category; lua: top-level keys by name, nested sections via `LuaSections`, unknown nested sections → "Mods", unknown keys → "Other"). The order arrays in that file drive display order; `BuildGroups` drops categories not listed in the order array's content — every category must end in "Other".
 - **Two panes per tab:** master-detail (selected category) plus a flat "matches" pane for search, toggled by `IsSearching`. Flat lists hold SettingVMs from *all* categories; row visibility in the detail pane is `SettingVM.IsVisible`, maintained by `CollectMatch` — keep both consistent.
 - **Avalonia perf trap:** `ItemsControl` has no virtualization by default. All four right-hand panes wrap an explicit `ItemsPanel` of `VirtualizingStackPanel` inside a manual `ScrollViewer` — removing that caused a measured 316 ms first tab switch (75 ms with it). Left panes are `ListBox` (virtualized by default).
-- **Control widths are a convention:** numeric 184px + `ButtonSpinnerLocation="Left"`, text 320px, enum MinWidth 250, key label MinWidth 140. Keep consistent across the four row templates in `MainWindow.axaml`.
+- **Control widths are a convention:** numeric 184px + `ButtonSpinnerLocation="Left"`, text 320px, enum MinWidth 250, key label MinWidth 140. Keep consistent across the four row templates in `MainWindow.axaml`. Checkboxes need `Padding="0"` so the glyph aligns with the other fields' right edges (Fluent CheckBox reserves template padding to the right of the 20px glyph for its text content, which our empty checkboxes never use).
 - Editing side-effect chain: setting a VM property (`NumberValue`, `IsChecked`, `Text`…) *immediately* writes through `ConfigFile.Update` and marks dirty. Constructor assignments deliberately don't (initial `[ObservableProperty]` field sets don't raise `OnChanged`) — that's why an enum value outside its comment list shows an empty dropdown instead of rewriting a user's value. Tests pin this.
 - `EnumSettingVM` options come from comments matching `N = label`; `Min:`/`Max:` in comments become numeric bounds.
 - `ConfirmWindow` is hand-rolled (no Avalonia dialog dependency); `OnClosing` clears `IsDirty` before re-`Close()` to avoid a re-entrant cancel loop.
@@ -52,6 +52,13 @@ Test runs on Windows open the user's real Zomboid folder during `MainViewModel` 
 UI scripts in `tools/` drive the real window via UIA + SendInput. Avalonia TabItems
 expose no `SelectionItemPattern` — click tab-header coordinates instead. Tests can't
 catch UI bugs; run the relevant script after XAML changes.
+
+**Docs first:** before hard-coding margins/insets against layout quirks discovered
+via the ps1 screenshot/scanner tools, look up the control's actual theme template —
+the Fluent control XAML sources (linked from Avalonia docs, "Control themes":
+`github.com/AvaloniaUI/Avalonia/tree/main/src/Avalonia.Themes.Fluent/Controls`)
+tell you exactly which template part (`Padding`, `MinWidth`, column definition)
+causes the offset, and local properties/styles beat theme setters.
 
 ## UX batch 7–11 (medium)
 

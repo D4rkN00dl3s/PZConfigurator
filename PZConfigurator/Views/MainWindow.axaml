@@ -49,7 +49,9 @@
                         <TextBlock Text="{Binding MatchCategory}" FontSize="11" Foreground="SlateGray"
                                    IsVisible="{Binding HasMatchCategory}" />
                     </StackPanel>
-                    <CheckBox Grid.Column="1" HorizontalAlignment="Right" IsChecked="{Binding IsChecked}" />
+                    <!-- Padding=0: the Fluent CheckBox template is 20px glyph + (padding around empty content);
+                         the default padding left-shifts the glyph ~8px from the field right edges -->
+                    <CheckBox Grid.Column="1" HorizontalAlignment="Right" Padding="0" IsChecked="{Binding IsChecked}" />
                 </Grid>
             </Border>
         </DataTemplate>
