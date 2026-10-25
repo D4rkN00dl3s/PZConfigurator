@@ -229,7 +229,9 @@
                                     <DataTemplate><TextBlock Text="{Binding Name}" /></DataTemplate>
                                 </ComboBox.ItemTemplate>
                             </ComboBox>
-                            <Button Content="Apply" Command="{Binding ApplyTemplateCommand}" Margin="6,0,0,0" />
+                            <!-- hidden until a template is chosen: a permanently visible Apply looks like "apply my edits" -->
+                            <Button Content="Apply" Command="{Binding ApplyTemplateCommand}" Margin="6,0,0,0"
+                                    IsVisible="{Binding HasTemplateSelected}" />
                         </StackPanel>
                         <ScrollViewer Grid.Row="1" IsVisible="{Binding IsSearching}" HorizontalScrollBarVisibility="Auto">
                             <ItemsControl ItemsSource="{Binding SandboxMatches}" Margin="8,0,20,0">

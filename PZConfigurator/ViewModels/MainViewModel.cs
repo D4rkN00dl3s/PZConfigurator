@@ -22,8 +22,11 @@ public partial class MainViewModel : ObservableObject
     private SandboxTemplate? _templateSelected;
 
     // status preview of what Apply will do, before it does it
+    public bool HasTemplateSelected => TemplateSelected != null;
+
     partial void OnTemplateSelectedChanged(SandboxTemplate? value)
     {
+        OnPropertyChanged(nameof(HasTemplateSelected));
         if (value == null) return;
         var present = SandboxGroups.SelectMany(g => g.Items).Select(i => i.Key)
             .ToHashSet(StringComparer.Ordinal);
