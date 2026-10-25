@@ -105,6 +105,8 @@ public partial class MainWindow : Window
     // double-tap anywhere on a boolean row toggles it (wired in the BoolSettingVM template)
     private void BoolRow_DoubleTapped(object? sender, TappedEventArgs e)
     {
+        // rapid presses on the glyph itself are the CheckBox's own click toggles; leave them alone
+        if (e.Source is CheckBox) return;
         if (sender is Border { DataContext: BoolSettingVM b }) b.IsChecked = !b.IsChecked;
         e.Handled = true;
     }

@@ -12,6 +12,7 @@ public abstract partial class SettingVM : ObservableObject
     protected readonly ConfigFile File;
     protected readonly Setting Setting;
     private readonly Action _markDirty;
+    private string _originalRaw; // value at load/save; IsModified compares the current value against this
 
     protected SettingVM(Setting setting, ConfigFile file, Action markDirty)
     {
@@ -20,6 +21,7 @@ public abstract partial class SettingVM : ObservableObject
         Key = setting.Key;
         Label = string.IsNullOrWhiteSpace(setting.Label) ? setting.Key : setting.Label;
         Tooltip = setting.Tooltip;
+        _originalRaw = Setting.RawValue;
         _markDirty = markDirty;
     }
 
@@ -29,8 +31,17 @@ public abstract partial class SettingVM : ObservableObject
     protected void Write(string newValue)
     {
         File.Update(Setting, newValue);
-        IsModified = true;
+        // yellow only when the value actually differs from the last loaded/saved state,
+        // so toggling a bool on and off doesn't look like a pending change
+        IsModified = newValue.Trim() != _originalRaw.Trim();
         _markDirty();
+    }
+
+    /// <summary>baseline reset after Save: the written values are now what's on disk</summary>
+    internal void ClearModified()
+    {
+        _originalRaw = Setting.RawValue;
+        IsModified = false;
     }
 
     private bool _isVisible = true;

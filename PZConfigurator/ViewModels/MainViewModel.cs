@@ -295,7 +295,12 @@ public partial class MainViewModel : ObservableObject
 
         try
         {
-            var markDirty = () => { if (!IsDirty) { IsDirty = true; Title = "PZConfigurator *"; } };
+            var markDirty = () =>
+            {
+                // dirty only when an actual save would write something (same check Save uses)
+                IsDirty = _files.Any(f => f.Render() != f.OriginalText);
+                Title = IsDirty ? "PZConfigurator *" : "PZConfigurator";
+            };
             var iniPath = Path.Combine(Folder, SelectedServer + ".ini");
             var luaPath = Path.Combine(Folder, SelectedServer + "_SandboxVars.lua");
             var ini = ConfigParser.LoadIni(iniPath);
@@ -418,7 +423,7 @@ public partial class MainViewModel : ObservableObject
             Title = "PZConfigurator";
             foreach (var g in IniGroups.Concat(SandboxGroups))
                 foreach (var i in g.Items)
-                    i.IsModified = false;
+                    i.ClearModified();
             ApplyFilter(); // with "modified only" on, the list empties now
             Status = "Saved " + DateTime.Now.ToString("HH:mm:ss");
             _loadedStatus = null; // don't resurrect the old "Loaded" message over the Save confirmation
