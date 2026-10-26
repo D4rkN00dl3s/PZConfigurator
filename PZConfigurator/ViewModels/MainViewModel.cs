@@ -7,6 +7,9 @@ using PZConfigurator.Config;
 
 namespace PZConfigurator.ViewModels;
 
+/// <summary>Severity attached to the current status message.</summary>
+public enum StatusKind { Info, Warn, Error }
+
 public partial class MainViewModel : ObservableObject
 {
     public const string DefaultFolderName = "Zomboid"; // under the user profile
@@ -31,9 +34,9 @@ public partial class MainViewModel : ObservableObject
         var present = SandboxGroups.SelectMany(g => g.Items).Select(i => i.Key)
             .ToHashSet(StringComparer.Ordinal);
         var found = value.Values.Keys.Count(k => present.Contains(k));
-        Status = $"Ready to apply \"{value.Name}\""
+        SetStatus($"Ready to apply \"{value.Name}\""
             + (string.IsNullOrEmpty(value.Description) ? "" : $": {value.Description}")
-            + $" — {found} of {value.Values.Count} settings found. Press Apply, review, then Save";
+            + $" — {found} of {value.Values.Count} settings found. Press Apply, review, then Save");
     }
 
     /// <summary>While searching, the right pane shows a flat list of matches from
@@ -57,17 +60,23 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private string? _status;
 
-    // status severity via text sniffing — call sites set plain strings, no need for a status-kind API
-    partial void OnStatusChanged(string? value)
+    [ObservableProperty]
+    private StatusKind _statusKind; // severity of the current status, set by SetStatus
+
+    private void SetStatus(string? text, StatusKind kind = StatusKind.Info)
     {
-        IsStatusError = value != null && (value.StartsWith("Error", StringComparison.Ordinal)
-            || value.Contains("changed on disk", StringComparison.Ordinal)
-            || value.Contains("Access denied", StringComparison.Ordinal));
-        IsStatusWarn = !IsStatusError && value != null
-            && (value.Contains("not found", StringComparison.Ordinal)
-             || value.Contains("template problems", StringComparison.OrdinalIgnoreCase)
-             || value.Contains("Unsaved changes", StringComparison.Ordinal));
+        Status = text;
+        StatusKind = text == null ? StatusKind.Info : kind;
+        // derived from the kind here so severity needs no text sniffing; XAML binds unchanged
+        IsStatusError = kind == StatusKind.Error && text != null;
+        IsStatusWarn = kind == StatusKind.Warn && text != null;
     }
+
+    [ObservableProperty]
+    private bool _isStatusError; // status text gets red/orange class
+
+    [ObservableProperty]
+    private bool _isStatusWarn;
 
     [ObservableProperty]
     private string _searchText = "";
@@ -93,12 +102,6 @@ public partial class MainViewModel : ObservableObject
     private bool _onlyModified; // show only settings changed since load/last save
 
     [ObservableProperty]
-    private bool _isStatusError; // status text gets red/orange class
-
-    [ObservableProperty]
-    private bool _isStatusWarn;
-
-    [ObservableProperty]
     private bool _hasNoMatches; // the search/modified panes show a "nothing found" text
 
     [ObservableProperty]
@@ -115,6 +118,7 @@ public partial class MainViewModel : ObservableObject
     private List<ConfigFile> _files = [];
     private string? _loadedServer;
     private string? _loadedStatus; // restored when search/filter is deactivated
+    private StatusKind _loadedStatusKind; // severity travels with _loadedStatus
     private bool _loading;
     private bool _suppress;
 
@@ -152,7 +156,8 @@ public partial class MainViewModel : ObservableObject
             foreach (var t in TemplateLoader.LoadZomboidPresets(TemplateLoader.ZomboidPresetFolder, errors))
                 Templates.Add(t);
         if (errors.Count > 0)
-            Status = (Status ?? "") + " | template problems: " + string.Join("; ", errors);
+            SetStatus((Status ?? "") + " | template problems: " + string.Join("; ", errors),
+                StatusKind.Warn);
     }
 
     [RelayCommand]
@@ -161,7 +166,7 @@ public partial class MainViewModel : ObservableObject
         var t = TemplateSelected;
         if (t == null)
         {
-            Status = "Select a template first";
+            SetStatus("Select a template first");
             return;
         }
 
@@ -177,12 +182,12 @@ public partial class MainViewModel : ObservableObject
         }
         ApplyFilter(); // update visibility first if "modified only" is on
         // nothing actually changed if every value already matched — don't send the user hunting
-        Status = IsDirty
+        SetStatus(IsDirty
             ? $"Applied \"{t.Name}\": {applied} values set"
                 + (missing > 0 ? $", {missing} not found" : "")
                 + " — review, then Save"
             : $"Applied \"{t.Name}\": no changes — config already matches this template"
-                + (missing > 0 ? $" ({missing} not found)" : "");
+                + (missing > 0 ? $" ({missing} not found)" : ""));
     }
 
     // assigns the template value through the write-through VM; returns false when
@@ -224,7 +229,7 @@ public partial class MainViewModel : ObservableObject
     {
         if (IsDirty && !await ConfirmDiscardAsync())
         {
-            Status = "Unsaved changes kept, list not reloaded";
+            SetStatus("Unsaved changes kept, list not reloaded", StatusKind.Warn);
             return;
         }
 
@@ -232,10 +237,10 @@ public partial class MainViewModel : ObservableObject
         try
         {
             Servers.Clear();
-            Status = null;
+            SetStatus(null);
             if (!Directory.Exists(Folder))
             {
-                Status = $"Folder not found: {Folder}";
+                SetStatus($"Folder not found: {Folder}", StatusKind.Warn);
                 SelectedServer = null;
                 return;
             }
@@ -251,18 +256,20 @@ public partial class MainViewModel : ObservableObject
             foreach (var s in servers) Servers.Add(s);
             SelectedServer = servers.Count > 0 ? servers[0] : null;
             if (SelectedServer == null)
-                Status = "No servers found (need name.ini + name_SandboxVars.lua) in " + Folder;
+                SetStatus("No servers found (need name.ini + name_SandboxVars.lua) in " + Folder,
+                    StatusKind.Warn);
         }
         catch (UnauthorizedAccessException)
         {
             // typical on Linux: dedicated-server home (e.g. /home/pz) is mode 700
             SelectedServer = null;
-            Status = $"Access denied on {Folder}. The server user's home is private on Linux — run the chmod/setfacl commands from the README section 'Linux: opening another user's Zomboid folder'.";
+            SetStatus($"Access denied on {Folder}. The server user's home is private on Linux — run the chmod/setfacl commands from the README section 'Linux: opening another user's Zomboid folder'.",
+                StatusKind.Error);
         }
         catch (Exception ex)
         {
             SelectedServer = null;
-            Status = "Error listing folder: " + ex.Message;
+            SetStatus("Error listing folder: " + ex.Message, StatusKind.Error);
         }
         finally
         {
@@ -281,7 +288,7 @@ public partial class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            Status = "Error switching server: " + ex.Message;
+            SetStatus("Error switching server: " + ex.Message, StatusKind.Error);
         }
     }
 
@@ -294,7 +301,7 @@ public partial class MainViewModel : ObservableObject
             _suppress = true;
             SelectedServer = _loadedServer;
             _suppress = false;
-            Status = "Unsaved changes kept, still on " + _loadedServer;
+            SetStatus("Unsaved changes kept, still on " + _loadedServer, StatusKind.Warn);
             return;
         }
         LoadNow();
@@ -333,15 +340,17 @@ public partial class MainViewModel : ObservableObject
             IniSelected = IniGroups.FirstOrDefault();
             SandboxSelected = SandboxGroups.FirstOrDefault();
 
-            Status = $"Loaded {SelectedServer}: "
+            var loadedMsg = $"Loaded {SelectedServer}: "
                 + (ini.Settings.Count() + lua.Settings.Count()) + " settings";
-            _loadedStatus = Status;
+            SetStatus(loadedMsg);
+            _loadedStatus = loadedMsg;
+            _loadedStatusKind = StatusKind.Info;
             HasConfigLoaded = true;
             ApplyFilter();
         }
         catch (Exception ex)
         {
-            Status = "Error loading: " + ex.Message;
+            SetStatus("Error loading: " + ex.Message, StatusKind.Error);
         }
     }
 
@@ -409,12 +418,12 @@ public partial class MainViewModel : ObservableObject
                 : $"No settings match \"{q}\"")
             : "";
         if (!string.IsNullOrEmpty(q))
-            Status = $"Searching \"{q}\": {total} match{(total == 1 ? "" : "es")}"
-                + (OnlyModified ? " among modified" : "");
+            SetStatus($"Searching \"{q}\": {total} match{(total == 1 ? "" : "es")}"
+                + (OnlyModified ? " among modified" : ""));
         else if (OnlyModified)
-            Status = $"Showing modified settings only: {total}";
+            SetStatus($"Showing modified settings only: {total}");
         else if (_loadedStatus != null)
-            Status = _loadedStatus;
+            SetStatus(_loadedStatus, _loadedStatusKind); // restore the kind with the text
     }
 
     private void CollectMatch(ObservableCollection<SettingVM> target, SettingVM item, string? q, string category)
@@ -448,18 +457,17 @@ public partial class MainViewModel : ObservableObject
                 foreach (var i in g.Items)
                     i.ClearModified();
             ApplyFilter(); // with "modified only" on, the list empties now
-            Status = "Saved " + DateTime.Now.ToString("HH:mm:ss");
+            SetStatus("Saved " + DateTime.Now.ToString("HH:mm:ss"));
             _loadedStatus = null; // don't resurrect the old "Loaded" message over the Save confirmation
         }
         catch (ConfigChangedOnDiskException ex)
         {
-            // text must keep containing "changed on disk": status severity sniffing relies on it
-            Status = ex.Message;
+            SetStatus(ex.Message, StatusKind.Error);
             return; // edits stay pending
         }
         catch (Exception ex)
         {
-            Status = "Error saving: " + ex.Message;
+            SetStatus("Error saving: " + ex.Message, StatusKind.Error);
         }
     }
 }

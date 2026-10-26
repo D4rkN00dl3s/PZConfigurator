@@ -88,21 +88,6 @@ public class FilterTests : IDisposable
     }
 
     [Fact]
-    public void Status_SeveritySniffs()
-    {
-        var vm = NewVm();
-        vm.Status = "Loaded myserver: 580 settings";
-        Assert.False(vm.IsStatusError);
-        vm.Status = "Error saving: oops";
-        Assert.True(vm.IsStatusError);
-        vm.Status = "x changed on disk since loading (server restart?)";
-        Assert.True(vm.IsStatusError);
-        vm.Status = "Applied \"Apocalypse\": 265 values set, 6 not found — review, then Save";
-        Assert.False(vm.IsStatusError);
-        Assert.True(vm.IsStatusWarn);
-    }
-
-    [Fact]
     public async Task Search_TagsMatchesWithCategoryAndClearsTags()
     {
         var vm = NewVm();

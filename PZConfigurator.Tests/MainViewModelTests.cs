@@ -135,6 +135,65 @@ public class MainViewModelTests : IDisposable
     }
 
     [Fact]
+    public async Task Status_NoDiskChange_HappyPaths()
+    {
+        // clean load -> Info
+        var vm = NewVm();
+        await vm.SetFolder(_dir);
+        Assert.StartsWith("Loaded a:", vm.Status);
+
+        // search active, then cleared: the Loaded status returns with Info
+        vm.SearchText = "MaxPlayers";
+        Assert.False(vm.IsStatusError);
+        Assert.False(vm.IsStatusWarn);
+        vm.SearchText = "";
+        Assert.StartsWith("Loaded a:", vm.Status);
+        Assert.Equal(StatusKind.Info, vm.StatusKind);
+    }
+
+    [Fact]
+    public async Task Status_NonexistentFolder_IsWarn()
+    {
+        var missing = Path.Combine(
+            Path.GetTempPath(), "pzcfg-vm-missing-" + Guid.NewGuid().ToString("N"));
+        var vm = new MainViewModel(null, missing, _userTemplates);
+        await WaitUntil(() => vm.Status != null, "discover completion");
+        Assert.True(vm.IsStatusWarn);
+        Assert.False(vm.IsStatusError);
+    }
+
+    [Fact]
+    public async Task Status_UnsavedChangesKept_IsWarn()
+    {
+        var vm = NewVm(() => Task.FromResult(false)); // decline -> revert -> keep edits
+        await vm.SetFolder(_dir);
+        vm.IniGroups.SelectMany(g => g.Items)
+            .OfType<NumberSettingVM>().First(n => n.Key == "MaxPlayers")
+            .NumberValue = 10;
+        vm.SelectedServer = "b"; // declined switch
+        await WaitUntil(() => vm.Status != null && vm.Status.StartsWith("Unsaved changes kept"), "decline message");
+        Assert.True(vm.IsStatusWarn);
+        Assert.False(vm.IsStatusError);
+    }
+
+    [Fact]
+    public async Task Status_SaveRefusedChangedOnDisk_IsError()
+    {
+        var vm = NewVm();
+        await vm.SetFolder(_dir);
+        vm.IniGroups.SelectMany(g => g.Items)
+            .OfType<NumberSettingVM>().First(n => n.Key == "MaxPlayers")
+            .NumberValue = 10;
+        File.AppendAllText(Path.Combine(_dir, "a.ini"), "ExtraKey=5\r\n"); // server rewrote it
+
+        vm.SaveCommand.Execute(null);
+
+        Assert.True(vm.IsStatusError);
+        Assert.False(vm.IsStatusWarn);
+        Assert.True(vm.IsDirty); // refusal keeps everything
+    }
+
+    [Fact]
     public async Task Save_DoesNotClobberFileChangedOnDisk()
     {
         var vm = NewVm();
