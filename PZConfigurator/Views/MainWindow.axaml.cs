@@ -91,7 +91,10 @@ public partial class MainWindow : Window
         }
         else if (e.Key == Key.Tab && DataContext is MainViewModel tab)
         {
-            tab.SelectedTabIndex = (tab.SelectedTabIndex + 1) % 2;
+            // derive the wrap size from the real TabControl so adding tabs keeps Ctrl+Tab cycling
+            var tabs = this.FindControl<TabControl>("Tabs");
+            var count = Math.Max(tabs?.ItemCount ?? 0, 1);
+            tab.SelectedTabIndex = (tab.SelectedTabIndex + 1) % count;
             e.Handled = true;
         }
     }

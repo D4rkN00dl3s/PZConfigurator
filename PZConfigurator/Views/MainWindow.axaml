@@ -167,7 +167,7 @@
             </Grid>
         </Grid>
 
-        <TabControl SelectedIndex="{Binding SelectedTabIndex}">
+        <TabControl Name="Tabs" SelectedIndex="{Binding SelectedTabIndex}">
             <TabItem Header="Server (ini)">
                 <Grid ColumnDefinitions="Auto,*">
                     <ListBox ItemsSource="{Binding IniGroups}" SelectedItem="{Binding IniSelected}"
