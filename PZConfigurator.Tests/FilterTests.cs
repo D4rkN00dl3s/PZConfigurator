@@ -110,6 +110,30 @@ public class FilterTests : IDisposable
     }
 
     [Fact]
+    public async Task Search_MatchesDescriptionFromThreeCharsOn()
+    {
+        var vm = new MainViewModel();
+        await vm.SetFolder(_dir);
+
+        // a word that lives in a setting description but not in any key
+        var desc = vm.SandboxGroups.Concat(vm.IniGroups).SelectMany(g => g.Items)
+            .FirstOrDefault(i =>
+                (i.Tooltip.Contains("Urban", StringComparison.OrdinalIgnoreCase)
+                    && !i.Key.Contains("Urban", StringComparison.OrdinalIgnoreCase))
+                || (i.Tooltip.Contains("July", StringComparison.OrdinalIgnoreCase)
+                    && !i.Key.Contains("July", StringComparison.OrdinalIgnoreCase)));
+        Assert.NotNull(desc); // fixture tooltips must carry such a word
+
+        // (a) >= 3 chars: matches via description
+        vm.SearchText = desc.Tooltip.Contains("Urban", StringComparison.OrdinalIgnoreCase) ? "Urban" : "July";
+        Assert.True(desc.HasMatchCategory, "tooltip=" + desc.Tooltip + " status=" + vm.Status);
+
+        // (b) 1-2 chars: description must not fire (keeps "4" from matching every "Default: 4")
+        vm.SearchText = vm.SearchText[..2];
+        Assert.False(desc.HasMatchCategory);
+    }
+
+    [Fact]
     public async Task Search_NoMatches_ShowsEmptyState()
     {
         var vm = new MainViewModel();

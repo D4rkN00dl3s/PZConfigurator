@@ -410,8 +410,11 @@ public partial class MainViewModel : ObservableObject
 
     private void CollectMatch(ObservableCollection<SettingVM> target, SettingVM item, string? q, string category)
     {
+        // key always matches; from 3 chars on the description counts too — keeps
+        // short queries like "4" from hitting every "Default: 4" hint
         var match = (string.IsNullOrEmpty(q)
-                || item.Key.Contains(q, StringComparison.OrdinalIgnoreCase))
+                || item.Key.Contains(q, StringComparison.OrdinalIgnoreCase)
+                || (q.Length >= 3 && item.Tooltip.Contains(q, StringComparison.OrdinalIgnoreCase)))
             && (!OnlyModified || item.IsModified);
         // item.IsVisible drives the master-detail pane; flat matched lists are pre-filtered
         item.IsVisible = match;
