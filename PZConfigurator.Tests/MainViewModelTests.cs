@@ -194,6 +194,36 @@ public class MainViewModelTests : IDisposable
     }
 
     [Fact]
+    public async Task Save_RenameFails_VMStaysDirtyWithErrorMessage()
+    {
+        // the fake a/b servers have no editable lua settings, so use the real pair fixture
+        var pairDir = Path.Combine(Path.GetTempPath(), "pzcfg-vm-pair-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(pairDir);
+        foreach (var name in new[] { "myserver.ini", "myserver_SandboxVars.lua" })
+            File.Copy(Path.Combine(AppContext.BaseDirectory, "TestData", name),
+                Path.Combine(pairDir, name));
+        try
+        {
+            var vm = NewVm();
+            await vm.SetFolder(pairDir);
+            vm.IniGroups.SelectMany(g => g.Items)
+                .OfType<NumberSettingVM>().First(n => n.Key == "MaxPlayers").NumberValue = 10;
+            vm.SandboxGroups.SelectMany(g => g.Items)
+                .OfType<EnumSettingVM>().First(n => n.Key == "Speed").TrySelectValue(3);
+
+            // seam fails the lua rename after the ini was already installed
+            ConfigParser.BeforeRename = p => { if (p.EndsWith("_SandboxVars.lua")) throw new IOException("disk full"); };
+            try { vm.SaveCommand.Execute(null); }
+            finally { ConfigParser.BeforeRename = null; }
+
+            Assert.True(vm.IsDirty); // nothing was accepted
+            Assert.True(vm.IsStatusError);
+            Assert.Contains("could not be saved", vm.Status);
+        }
+        finally { Directory.Delete(pairDir, true); }
+    }
+
+    [Fact]
     public async Task Save_DoesNotClobberFileChangedOnDisk()
     {
         var vm = NewVm();

@@ -237,30 +237,91 @@ public static partial class ConfigParser
 
     /// <summary>How many timestamped history backups are kept per file.</summary>
     public const int BackupHistoryCount = 10;
-    /// <summary>Test seam for the timestamp clock; production stays on the real UTC clock.</summary>
-    internal static Func<DateTime> UtcNow = () => DateTime.UtcNow;
 
-    public static void Save(ConfigFile file)
+    public static void Save(ConfigFile file) => SaveAll([file]);
+
+    /// <summary>All-or-nothing save of a config pair. Phase 1 disk-checks every changed file,
+    /// phase 2 makes backups + temp writes, phase 3 renames (rolling back from .bak on
+    /// failure); only when EVERY rename succeeded does OriginalText move forward.</summary>
+    public static void SaveAll(IReadOnlyList<ConfigFile> files)
     {
-        var text = file.Render();
-        if (text == file.OriginalText) return; // unchanged: don't rewrite/roll the backup
-        // the cache is from load time; the server may have rewritten the file meanwhile.
-        // Write-path invariant: every caller of Save gets this guard, not just the VM.
-        if (File.Exists(file.Path) && File.ReadAllText(file.Path) != file.OriginalText)
-            throw new ConfigChangedOnDiskException(file.Path);
-        File.Copy(file.Path, file.Path + ".bak", overwrite: true);
-        CreateTimestampedBackup(file.Path);
-        var tmp = file.Path + ".tmp";
-        File.WriteAllText(tmp, text, new UTF8Encoding(file.HasBom));
-        if (!OperatingSystem.IsWindows())
+        // phase 1: nothing is written until every changed file has passed the disk-match guard
+        var changed = new List<(ConfigFile file, string text)>();
+        foreach (var f in files)
+        {
+            var text = f.Render();
+            if (text == f.OriginalText) continue;
+            // the cache is from load time; the server may have rewritten the file meanwhile
+            if (File.Exists(f.Path) && File.ReadAllText(f.Path) != f.OriginalText)
+                throw new ConfigChangedOnDiskException(f.Path);
+            changed.Add((f, text));
+        }
+        if (changed.Count == 0) return;
+        var paths = changed.Select(c => c.file.Path).ToList();
+
+        try
+        {
+            // phase 2: per-file backups and temp writes; renaming happens only afterwards
+            foreach (var (f, text) in changed)
+            {
+                File.Copy(f.Path, f.Path + ".bak", overwrite: true);
+                CreateTimestampedBackup(f.Path);
+                WriteTemp(f.Path, text, f.HasBom);
+            }
+
+            // phase 3: install one by one; restore from .bak when anything fails mid-way
+            for (var i = 0; i < changed.Count; i++)
+            {
+                var path = changed[i].file.Path;
+                try
+                {
+                    BeforeRename?.Invoke(path);
+                    File.Move(path + ".tmp", path, overwrite: true);
+                }
+                catch (Exception failure)
+                {
+                    var rollback = new List<string>();
+                    for (var j = 0; j < i; j++)
+                    {
+                        try { File.Copy(paths[j] + ".bak", paths[j], overwrite: true); }
+                        catch { rollback.Add(Path.GetFileName(paths[j])); }
+                    }
+                    // whatever the failure is, its message must tell the user which state survived
+                    var msg = rollback.Count > 0
+                        ? $"{Path.GetFileName(path)} could not be saved ({failure.Message}); the earlier saves of {string.Join(", ", rollback)} could not be rolled back and remain written"
+                        : $"{Path.GetFileName(path)} could not be saved ({failure.Message}); already-saved files were restored from their .bak";
+                    throw new IOException(msg, failure);
+                }
+            }
+        }
+        finally
+        {
+            // every failure path leaves no .tmp behind
+            foreach (var p in paths)
+                try { if (File.Exists(p + ".tmp")) File.Delete(p + ".tmp"); }
+                catch { /* best effort */ }
+        }
+
+        // phase 4: after ALL renames succeeded, the files on disk ARE the new originals
+        foreach (var (f, text) in changed)
+            f.OriginalText = text;
+
+        static void WriteTemp(string path, string text, bool bom)
+        {
+            File.WriteAllText(path + ".tmp", text, new UTF8Encoding(bom));
+            if (OperatingSystem.IsWindows()) return;
             // rename installs a fresh inode, so the new file would get umask defaults;
             // carry the original mode over, but never fail the save over it
-            try { File.SetUnixFileMode(tmp, File.GetUnixFileMode(file.Path)); }
+            try { File.SetUnixFileMode(path + ".tmp", File.GetUnixFileMode(path)); }
             catch (Exception) { /* unsupported filesystem etc. */ }
-        File.Move(tmp, file.Path, overwrite: true);
-        // keep "Render == OriginalText" meaningful: after save the file IS the original
-        file.OriginalText = text;
+        }
     }
+
+    /// <summary>Test seam called with the target path just before each rename; null in production.</summary>
+    internal static Action<string>? BeforeRename;
+
+    /// <summary>Test seam for the timestamp clock; production stays on the real UTC clock.</summary>
+    internal static Func<DateTime> UtcNow = () => DateTime.UtcNow;
 
     /// <summary>Copy the pre-save content to a timestamped history backup, then prune to
     /// BackupHistoryCount. Best effort: the save must never fail because of history.</summary>

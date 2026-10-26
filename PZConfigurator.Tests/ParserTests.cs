@@ -172,6 +172,90 @@ public class ParserTests
     }
 
     [Fact]
+    public void SaveAll_LuaChangedOnDisk_IniNotTouched()
+    {
+        var dir = NewPairDir();
+        try
+        {
+            var ini = ConfigParser.LoadIni(Path.Combine(dir, "myserver.ini"));
+            var lua = ConfigParser.LoadLua(Path.Combine(dir, "myserver_SandboxVars.lua"));
+            ini.Update(ini.Settings.First(s => s.Key == "MaxPlayers"), "10");
+            lua.Update(lua.Groups.SelectMany(g => g.Settings).First(s => s.Key == "Speed"), "3");
+
+            // the server rewrites the LUA while the app is editing; ini remains pristine
+            var luaPath = Path.Combine(dir, "myserver_SandboxVars.lua");
+            File.AppendAllText(luaPath, "-- server note\r\n");
+            var iniBytes = File.ReadAllBytes(Path.Combine(dir, "myserver.ini"));
+
+            var ex = Assert.Throws<ConfigChangedOnDiskException>(
+                () => ConfigParser.SaveAll([ini, lua]));
+            Assert.Contains("myserver_SandboxVars.lua", ex.Message);
+            Assert.Equal(iniBytes, File.ReadAllBytes(Path.Combine(dir, "myserver.ini"))); // half-save prevented
+            Assert.Empty(Directory.GetFiles(dir, "*.tmp"));
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
+    public void SaveAll_RenameFailsOnSecondFile_FirstRolledBack_NoTmp()
+    {
+        var dir = NewPairDir();
+        try
+        {
+            var ini = ConfigParser.LoadIni(Path.Combine(dir, "myserver.ini"));
+            var lua = ConfigParser.LoadLua(Path.Combine(dir, "myserver_SandboxVars.lua"));
+            ini.Update(ini.Settings.First(s => s.Key == "MaxPlayers"), "10");
+            lua.Update(lua.Groups.SelectMany(g => g.Settings).First(s => s.Key == "Speed"), "3");
+            var iniBytes = File.ReadAllBytes(Path.Combine(dir, "myserver.ini"));
+            var luaBytes = File.ReadAllBytes(Path.Combine(dir, "myserver_SandboxVars.lua"));
+
+            // seam fails the lua rename like a blown disk would
+            ConfigParser.BeforeRename = p => { if (p.EndsWith("_SandboxVars.lua")) throw new IOException("disk full"); };
+            try
+            {
+                var ex = Assert.Throws<IOException>(() => ConfigParser.SaveAll([ini, lua]));
+                Assert.Contains("restored from their .bak", ex.Message);
+                // the ini was already renamed — rollback must put the original bytes back
+                Assert.Equal(iniBytes, File.ReadAllBytes(Path.Combine(dir, "myserver.ini")));
+                Assert.Equal(luaBytes, File.ReadAllBytes(Path.Combine(dir, "myserver_SandboxVars.lua")));
+            }
+            finally { ConfigParser.BeforeRename = null; }
+
+            Assert.Empty(Directory.GetFiles(dir, "*.tmp")); // no leftover debris
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
+    public void SaveAll_HappyPath_BothSaved_NoTmp()
+    {
+        var dir = NewPairDir();
+        try
+        {
+            var ini = ConfigParser.LoadIni(Path.Combine(dir, "myserver.ini"));
+            var lua = ConfigParser.LoadLua(Path.Combine(dir, "myserver_SandboxVars.lua"));
+            ini.Update(ini.Settings.First(s => s.Key == "MaxPlayers"), "10");
+            lua.Update(lua.Groups.SelectMany(g => g.Settings).First(s => s.Key == "Speed"), "3");
+
+            ConfigParser.SaveAll([ini, lua]);
+
+            Assert.Contains("MaxPlayers=10", File.ReadAllText(Path.Combine(dir, "myserver.ini")));
+            Assert.Contains("Speed = 3", File.ReadAllText(Path.Combine(dir, "myserver_SandboxVars.lua")));
+            Assert.Empty(Directory.GetFiles(dir, "*.tmp"));
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    static string NewPairDir()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "pzcfg-test-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        foreach (var name in new[] { "myserver.ini", "myserver_SandboxVars.lua" })
+            File.Copy(Data(name), Path.Combine(dir, name));
+        return dir;
+    }
+
+    [Fact]
     public void Save_History_TwoSavesKeepOldestTimestampedBackup()
     {
         var dir = Path.Combine(Path.GetTempPath(), "pzcfg-test-" + Guid.NewGuid().ToString("N"));
@@ -191,7 +275,10 @@ public class ParserTests
             ConfigParser.Save(file);
 
             var stamps = Directory.GetFiles(dir, "a.ini.*.bak")
-                .Select(Path.GetFileName).OrderBy(n => n).ToList();
+                .Select(Path.GetFileName)
+                .Where(n => n != null)
+                .Select(n => n!)
+                .OrderBy(n => n).ToList();
             Assert.Equal(2, stamps.Count);
             // the OLDEST snapshot is the fixture's pre-save content, byte-identical
             Assert.Equal(originalBytes, File.ReadAllBytes(Path.Combine(dir, stamps[0])));

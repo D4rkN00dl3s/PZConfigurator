@@ -446,11 +446,8 @@ public partial class MainViewModel : ObservableObject
     {
         try
         {
-            foreach (var f in _files)
-            {
-                if (f.Render() == f.OriginalText) continue;
-                ConfigParser.Save(f); // throws ConfigChangedOnDiskException when the file moved under us
-            }
+            // one atomic SaveAll for the pair: either both files land or none
+            ConfigParser.SaveAll(_files);
             IsDirty = false;
             Title = "PZConfigurator";
             foreach (var g in IniGroups.Concat(SandboxGroups))
