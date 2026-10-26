@@ -256,6 +256,49 @@ public class ParserTests
     }
 
     [Fact]
+    public void SaveAll_ValueWithNewline_VerificationRefuses_EverythingUnchanged()
+    {
+        var dir = NewPairDir();
+        try
+        {
+            var ini = ConfigParser.LoadIni(Path.Combine(dir, "myserver.ini"));
+            var originalBytes = File.ReadAllBytes(Path.Combine(dir, "myserver.ini"));
+
+            // a hand-written template could smuggle a newline into a value
+            ini.Update(ini.Settings.First(s => s.Key == "PVP"), "true\nExtra=1");
+
+            var ex = Assert.Throws<SaveVerificationException>(
+                () => ConfigParser.SaveAll([ini]));
+            Assert.Contains("line count", ex.Message);
+            Assert.Equal(originalBytes, File.ReadAllBytes(Path.Combine(dir, "myserver.ini")));
+            Assert.Empty(Directory.GetFiles(dir, "*.tmp"));
+            // verification runs BEFORE backups: no .bak and no timestamped history either
+            Assert.DoesNotContain(Directory.GetFiles(dir),
+                static f => f.EndsWith(".bak", StringComparison.Ordinal));
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
+    public void SaveAll_SemicolonAndEqualsInValue_AreLegit()
+    {
+        var dir = NewPairDir();
+        try
+        {
+            var ini = ConfigParser.LoadIni(Path.Combine(dir, "myserver.ini"));
+
+            // ; and = are ordinary characters inside values — never a reason to refuse
+            ini.Update(ini.Settings.First(s => s.Key == "ChatStreams"), "s=all;x=y");
+            ConfigParser.SaveAll([ini]);
+
+            var after = File.ReadAllText(Path.Combine(dir, "myserver.ini"));
+            Assert.Contains("ChatStreams=s=all;x=y", after);
+            Assert.Empty(Directory.GetFiles(dir, "*.tmp"));
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
     public void Save_History_TwoSavesKeepOldestTimestampedBackup()
     {
         var dir = Path.Combine(Path.GetTempPath(), "pzcfg-test-" + Guid.NewGuid().ToString("N"));

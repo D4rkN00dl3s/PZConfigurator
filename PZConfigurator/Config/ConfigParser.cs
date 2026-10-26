@@ -9,6 +9,10 @@ namespace PZConfigurator.Config;
 public sealed class ConfigChangedOnDiskException(string path) : IOException(
     Path.GetFileName(path) + " changed on disk since loading (server restart?) — press Refresh to re-read it before saving, or your other changes would be lost");
 
+/// <summary>Raised when a rendered config fails sanity checks before being installed.</summary>
+public sealed class SaveVerificationException(string path, int lineIndex, string detail) : IOException(
+    $"{Path.GetFileName(path)}: refusing to save — {detail} at line {lineIndex + 1}");
+
 public static partial class ConfigParser
 {
     [GeneratedRegex(@"^\s*(-?\d+)\s*=\s*(.+?)\s*$")]
@@ -261,15 +265,23 @@ public static partial class ConfigParser
 
         try
         {
-            // phase 2: per-file backups and temp writes; renaming happens only afterwards
+            // phase 2: temp writes only — no .bak/history yet, so verification failures
+            // can't leave backup debris; renames happen only afterwards
             foreach (var (f, text) in changed)
+                WriteTemp(f.Path, text, f.HasBom);
+
+            // phase 3: verify the rendered output is still a sane config file
+            foreach (var (f, _) in changed)
+                VerifyTemp(f, f.Path + ".tmp");
+
+            // phase 4: backups only for files whose temp passed verification
+            foreach (var (f, _) in changed)
             {
                 File.Copy(f.Path, f.Path + ".bak", overwrite: true);
                 CreateTimestampedBackup(f.Path);
-                WriteTemp(f.Path, text, f.HasBom);
             }
 
-            // phase 3: install one by one; restore from .bak when anything fails mid-way
+            // phase 5: install one by one; restore from .bak when anything fails mid-way
             for (var i = 0; i < changed.Count; i++)
             {
                 var path = changed[i].file.Path;
@@ -302,7 +314,7 @@ public static partial class ConfigParser
                 catch { /* best effort */ }
         }
 
-        // phase 4: after ALL renames succeeded, the files on disk ARE the new originals
+        // phase 6: after ALL renames succeeded, the files on disk ARE the new originals
         foreach (var (f, text) in changed)
             f.OriginalText = text;
 
@@ -314,6 +326,46 @@ public static partial class ConfigParser
             // carry the original mode over, but never fail the save over it
             try { File.SetUnixFileMode(path + ".tmp", File.GetUnixFileMode(path)); }
             catch (Exception) { /* unsupported filesystem etc. */ }
+        }
+
+        static void VerifyTemp(ConfigFile file, string tmp)
+        {
+            void Fail(int index, string why) =>
+                throw new SaveVerificationException(file.Path, index, why);
+
+            // decode exactly like ReadLines: BOM stripped, UTF8, \r\n normalized
+            var bytes = File.ReadAllBytes(tmp);
+            var decoded = new UTF8Encoding(false).GetString(
+                bytes.AsSpan().StartsWith(Encoding.UTF8.GetPreamble())
+                    ? bytes.AsSpan(Encoding.UTF8.GetPreamble().Length) : bytes);
+            var lines = decoded.Replace("\r\n", "\n").TrimEnd('\n').Split('\n');
+
+            // Update replaces one line by one line; a value with an embedded newline
+            // would shift everything below it
+            if (lines.Length != file.Lines.Count)
+                Fail(file.Lines.Count,
+                    $"line count changed from {file.Lines.Count} to {lines.Length} — a value likely contains a newline");
+
+            // beyond the line count, only lines that host a setting may differ at all
+            var settingLines = file.Settings.Select(s => s.LineIndex).ToHashSet();
+            for (var i = 0; i < lines.Length; i++)
+            {
+                if (lines[i] == file.Lines[i] || settingLines.Contains(i)) continue;
+                Fail(i, "untouched line changed — was: " + file.Lines[i]);
+            }
+
+            // the written file must parse back with the identical setting sequence
+            try
+            {
+                var reparsed = file.Path.EndsWith(".ini") ? LoadIni(tmp) : LoadLua(tmp);
+                if (!file.Settings.Select(s => s.Key).SequenceEqual(reparsed.Settings.Select(s => s.Key)))
+                    Fail(0, "parsed setting sequence changed");
+            }
+            catch (SaveVerificationException) { throw; }
+            catch (Exception parse)
+            {
+                Fail(0, "written file does not parse: " + parse.Message);
+            }
         }
     }
 
