@@ -34,6 +34,8 @@ public class TemplateTests : IDisposable
         {
             Assert.NotEmpty(t.Values);
             Assert.False(t.Values.ContainsKey("VERSION"), "VERSION is read-only and must not be templated");
+            Assert.True(!t.Values.Values.Contains("{"),
+                $"{t.Name}: section headers ({{) are extractor garbage, not setting values");
         }
         Assert.True(templates.Single(t => t.Name == "Apocalypse").Values.ContainsKey("Zombies"));
     }
