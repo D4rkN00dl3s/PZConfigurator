@@ -440,13 +440,7 @@ public partial class MainViewModel : ObservableObject
             foreach (var f in _files)
             {
                 if (f.Render() == f.OriginalText) continue;
-                // the cache is from load time; the server may have rewritten the file meanwhile
-                if (File.Exists(f.Path) && File.ReadAllText(f.Path) != f.OriginalText)
-                {
-                    Status = Path.GetFileName(f.Path) + " changed on disk since loading (server restart?) — press Refresh to re-read it before saving, or your other changes would be lost";
-                    return;
-                }
-                ConfigParser.Save(f);
+                ConfigParser.Save(f); // throws ConfigChangedOnDiskException when the file moved under us
             }
             IsDirty = false;
             Title = "PZConfigurator";
@@ -456,6 +450,12 @@ public partial class MainViewModel : ObservableObject
             ApplyFilter(); // with "modified only" on, the list empties now
             Status = "Saved " + DateTime.Now.ToString("HH:mm:ss");
             _loadedStatus = null; // don't resurrect the old "Loaded" message over the Save confirmation
+        }
+        catch (ConfigChangedOnDiskException ex)
+        {
+            // text must keep containing "changed on disk": status severity sniffing relies on it
+            Status = ex.Message;
+            return; // edits stay pending
         }
         catch (Exception ex)
         {

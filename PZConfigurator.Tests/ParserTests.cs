@@ -108,6 +108,28 @@ public class ParserTests
     }
 
     [Fact]
+    public void Save_Direct_ThrowsWhenFileChangedOnDisk_NoWriteNoBak()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "pzcfg-test-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        var iniPath = Path.Combine(dir, "a.ini");
+        File.WriteAllText(iniPath, "PVP=false\r\n");
+
+        var file = ConfigParser.LoadIni(iniPath);
+        file.Update(file.Settings.First(s => s.Key == "PVP"), "true"); // pending change
+
+        // someone else rewrites the file while the app holds its copy
+        File.WriteAllText(iniPath, "PVP=false\r\nExtraKey=5\r\n");
+
+        var ex = Assert.Throws<ConfigChangedOnDiskException>(() => ConfigParser.Save(file));
+        Assert.Contains("a.ini", ex.Message); // message names the file
+        Assert.Equal("PVP=false\r\nExtraKey=5\r\n", File.ReadAllText(iniPath)); // nothing written
+        Assert.False(File.Exists(iniPath + ".bak")); // no backup either
+
+        Directory.Delete(dir, true);
+    }
+
+    [Fact]
     public void Save_TwiceWithoutChanges_BackupStillHoldsPreFirstSaveContent()
     {
         var dir = Path.Combine(Path.GetTempPath(), "pzcfg-test-" + Guid.NewGuid().ToString("N"));

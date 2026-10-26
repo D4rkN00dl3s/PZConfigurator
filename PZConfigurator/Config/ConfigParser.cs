@@ -1,7 +1,12 @@
+using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
 
 namespace PZConfigurator.Config;
+
+/// <summary>Raised when the on-disk file no longer matches the copy loaded into the app.</summary>
+public sealed class ConfigChangedOnDiskException(string path) : IOException(
+    Path.GetFileName(path) + " changed on disk since loading (server restart?) — press Refresh to re-read it before saving, or your other changes would be lost");
 
 public static partial class ConfigParser
 {
@@ -233,6 +238,10 @@ public static partial class ConfigParser
     {
         var text = file.Render();
         if (text == file.OriginalText) return; // unchanged: don't rewrite/roll the backup
+        // the cache is from load time; the server may have rewritten the file meanwhile.
+        // Write-path invariant: every caller of Save gets this guard, not just the VM.
+        if (File.Exists(file.Path) && File.ReadAllText(file.Path) != file.OriginalText)
+            throw new ConfigChangedOnDiskException(file.Path);
         File.Copy(file.Path, file.Path + ".bak", overwrite: true);
         var tmp = file.Path + ".tmp";
         File.WriteAllText(tmp, text, new UTF8Encoding(file.HasBom));
