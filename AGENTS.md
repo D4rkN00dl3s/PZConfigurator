@@ -15,7 +15,7 @@ powershell -ExecutionPolicy Bypass -File tools\uicheck.ps1   # UIA smoke: toggle
 powershell -ExecutionPolicy Bypass -File tools\templateapply.ps1  # template apply smoke (Ctrl+Tab + UIA patterns)
 ```
 
-Test runs on Windows open the user's real Zomboid folder during `MainViewModel` construction (synchronous; harmless).
+Tests are hermetic: `MainViewModel(confirmDiscard, folder, userTemplateFolder)` lets tests inject temp dirs, so nothing under the real `%USERPROFILE%\Zomboid` is ever read (the ctor assigns `folder` before `DiscoverAsync` starts, and passing `userTemplateFolder` also skips the real `Zomboid\Sandbox Presets` scan).
 
 ## Hard invariants (breaking these breaks user data)
 

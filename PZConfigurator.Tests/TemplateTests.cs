@@ -9,19 +9,29 @@ public class TemplateTests : IDisposable
 {
     private readonly string _dir = Path.Combine(
         Path.GetTempPath(), "pzcfg-tpl-" + Guid.NewGuid().ToString("N"));
+    private readonly string _userTemplates = Path.Combine(
+        Path.GetTempPath(), "pzcfg-tpl-tpl-" + Guid.NewGuid().ToString("N"));
 
     static TemplateTests() => AvaloniaTestSetup.Ensure();
 
     public TemplateTests()
     {
         Directory.CreateDirectory(_dir);
+        Directory.CreateDirectory(_userTemplates);
         foreach (var name in new[] { "myserver.ini", "myserver_SandboxVars.lua" })
             File.Copy(
                 Path.Combine(AppContext.BaseDirectory, "TestData", name),
                 Path.Combine(_dir, name));
     }
 
-    public void Dispose() => Directory.Delete(_dir, true);
+    public void Dispose()
+    {
+        Directory.Delete(_dir, true);
+        Directory.Delete(_userTemplates, true);
+    }
+
+    // hermetic VM factory: never touches the real %USERPROFILE% Zomboid/template folders
+    private MainViewModel NewVm() => new(null, _dir, _userTemplates);
 
     [Fact]
     public void EmbeddedTemplates_AllParse()
@@ -43,7 +53,7 @@ public class TemplateTests : IDisposable
     [Fact]
     public async Task IniSettings_NeverCompareAgainstSandboxDefaults()
     {
-        var vm = new MainViewModel();
+        var vm = NewVm();
         await vm.SetFolder(_dir);
         Assert.Equal("myserver", vm.LoadedServer); // sanity: VM loaded both config files
 
@@ -55,7 +65,7 @@ public class TemplateTests : IDisposable
     [Fact]
     public async Task ApplyTemplate_SetsValues_MarksDirty_WritesOnlyOnSave()
     {
-        var vm = new MainViewModel();
+        var vm = NewVm();
         var apocalypse = vm.Templates.Single(t => t.Name == "Apocalypse");
         var luaPath = Path.Combine(_dir, "myserver_SandboxVars.lua");
         // force a real change: put the opposite of the template value on disk BEFORE
@@ -108,7 +118,7 @@ public class TemplateTests : IDisposable
     [Fact]
     public async Task ApplyTemplate_ReportsUnknownKeysExactly()
     {
-        var vm = new MainViewModel();
+        var vm = NewVm();
         await vm.SetFolder(_dir);
 
         var tiny = new SandboxTemplate

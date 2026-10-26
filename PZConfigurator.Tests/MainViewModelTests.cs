@@ -9,6 +9,8 @@ public class MainViewModelTests : IDisposable
 {
     private readonly string _dir = Path.Combine(
         Path.GetTempPath(), "pzcfg-vm-" + Guid.NewGuid().ToString("N"));
+    private readonly string _userTemplates = Path.Combine(
+        Path.GetTempPath(), "pzcfg-vm-tpl-" + Guid.NewGuid().ToString("N"));
 
     // two minimal fake servers so the VM has something to select
     private static readonly string IniText = "PVP=false\r\nMaxPlayers=32\r\n";
@@ -23,16 +25,25 @@ public class MainViewModelTests : IDisposable
     public MainViewModelTests()
     {
         Directory.CreateDirectory(_dir);
+        Directory.CreateDirectory(_userTemplates);
         WriteServer(_dir, "a");
         WriteServer(_dir, "b");
     }
 
-    public void Dispose() => Directory.Delete(_dir, true);
+    public void Dispose()
+    {
+        Directory.Delete(_dir, true);
+        Directory.Delete(_userTemplates, true);
+    }
+
+    // hermetic VM factory: never touches the real %USERPROFILE% Zomboid/template folders
+    private MainViewModel NewVm(Func<Task<bool>>? confirmDiscard = null) =>
+        new(confirmDiscard, _dir, _userTemplates);
 
     [Fact]
     public async Task SwitchingServerWhileDirty_RevertsWhenDeclined()
     {
-        var vm = new MainViewModel(() => Task.FromResult(false));
+        var vm = NewVm(() => Task.FromResult(false));
         await vm.SetFolder(_dir); // fresh folder, no edits pending
         var first = vm.SelectedServer;
         Assert.Equal("a", vm.LoadedServer);
@@ -53,7 +64,7 @@ public class MainViewModelTests : IDisposable
     [Fact]
     public async Task SwitchingServerWhileDirty_LoadsWhenConfirmed()
     {
-        var vm = new MainViewModel(() => Task.FromResult(true));
+        var vm = NewVm(() => Task.FromResult(true));
         await vm.SetFolder(_dir);
         Assert.Equal("a", vm.SelectedServer);
 
@@ -72,7 +83,7 @@ public class MainViewModelTests : IDisposable
     [Fact]
     public async Task SearchAcrossCategories_FindsSettingsOutsideSelectedGroup()
     {
-        var vm = new MainViewModel();
+        var vm = NewVm();
         await vm.SetFolder(_dir); // fresh folder, no edits pending
         Assert.Equal("a", vm.SelectedServer);
 
@@ -110,9 +121,23 @@ public class MainViewModelTests : IDisposable
     }
 
     [Fact]
+    public async Task Constructor_NonexistentFolder_NoServersNoThrow()
+    {
+        var missing = Path.Combine(
+            Path.GetTempPath(), "pzcfg-vm-missing-" + Guid.NewGuid().ToString("N"));
+        // constructor fires DiscoverAsync fire-and-forget; "Folder not found" status
+        // is only set at its end, so it doubles as the completion signal
+        var vm = new MainViewModel(null, missing, _userTemplates);
+        await WaitUntil(() => vm.Status != null, "discover completion");
+        Assert.Empty(vm.Servers);
+        Assert.Null(vm.SelectedServer);
+        Assert.Contains("Folder not found", vm.Status);
+    }
+
+    [Fact]
     public async Task Save_DoesNotClobberFileChangedOnDisk()
     {
-        var vm = new MainViewModel();
+        var vm = NewVm();
         await vm.SetFolder(_dir);
         var number = vm.IniGroups.SelectMany(g => g.Items)
             .OfType<NumberSettingVM>().First(n => n.Key == "MaxPlayers");

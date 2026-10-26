@@ -10,6 +10,8 @@ public class FilterTests : IDisposable
 
     private readonly string _dir = Path.Combine(
         Path.GetTempPath(), "pzcfg-flt-" + Guid.NewGuid().ToString("N"));
+    private readonly string _userTemplates = Path.Combine(
+        Path.GetTempPath(), "pzcfg-flt-tpl-" + Guid.NewGuid().ToString("N"));
 
     public FilterTests()
     {
@@ -18,9 +20,18 @@ public class FilterTests : IDisposable
             File.Copy(
                 Path.Combine(AppContext.BaseDirectory, "TestData", name),
                 Path.Combine(_dir, name));
+        Directory.CreateDirectory(_userTemplates);
     }
 
-    public void Dispose() => Directory.Delete(_dir, true);
+    public void Dispose()
+    {
+        Directory.Delete(_dir, true);
+        Directory.Delete(_userTemplates, true);
+    }
+
+    // hermetic VM factory: never touches the real %USERPROFILE% Zomboid/template folders
+    private MainViewModel NewVm(Func<Task<bool>>? confirmDiscard = null) =>
+        new(confirmDiscard, _dir, _userTemplates);
 
     private static int Visible(MainViewModel vm) =>
         vm.IniGroups.Concat(vm.SandboxGroups).Sum(g => g.Items.Count(i => i.IsVisible));
@@ -28,7 +39,7 @@ public class FilterTests : IDisposable
     [Fact]
     public async Task OnlyModified_FilterShowsChangedRows_Only()
     {
-        var vm = new MainViewModel();
+        var vm = NewVm();
         await vm.SetFolder(_dir);
         var allVisible = Visible(vm);
         Assert.True(allVisible > 0);
@@ -61,7 +72,7 @@ public class FilterTests : IDisposable
     [Fact]
     public async Task Save_ClearsModifiedFilterTargets()
     {
-        var vm = new MainViewModel();
+        var vm = NewVm();
         await vm.SetFolder(_dir);
         var m = vm.SandboxGroups.SelectMany(g => g.Items)
             .OfType<BoolSettingVM>().First(b => b.IsVisible);
@@ -79,7 +90,7 @@ public class FilterTests : IDisposable
     [Fact]
     public void Status_SeveritySniffs()
     {
-        var vm = new MainViewModel();
+        var vm = NewVm();
         vm.Status = "Loaded myserver: 580 settings";
         Assert.False(vm.IsStatusError);
         vm.Status = "Error saving: oops";
@@ -94,7 +105,7 @@ public class FilterTests : IDisposable
     [Fact]
     public async Task Search_TagsMatchesWithCategoryAndClearsTags()
     {
-        var vm = new MainViewModel();
+        var vm = NewVm();
         await vm.SetFolder(_dir);
 
         vm.SearchText = "Port";
@@ -112,7 +123,7 @@ public class FilterTests : IDisposable
     [Fact]
     public async Task Search_MatchesDescriptionFromThreeCharsOn()
     {
-        var vm = new MainViewModel();
+        var vm = NewVm();
         await vm.SetFolder(_dir);
 
         // a word that lives in a setting description but not in any key
@@ -136,7 +147,7 @@ public class FilterTests : IDisposable
     [Fact]
     public async Task Search_NoMatches_ShowsEmptyState()
     {
-        var vm = new MainViewModel();
+        var vm = NewVm();
         await vm.SetFolder(_dir);
 
         vm.SearchText = "ZzzNoSuchThing";
@@ -157,7 +168,7 @@ public class FilterTests : IDisposable
     [Fact]
     public async Task TemplatePreview_ShowsCountsOnSelection()
     {
-        var vm = new MainViewModel();
+        var vm = NewVm();
         await vm.SetFolder(_dir);
         var apocalypse = vm.Templates.Single(t => t.Name == "Apocalypse");
 
@@ -170,7 +181,7 @@ public class FilterTests : IDisposable
     [Fact]
     public async Task TemplateApply_NoEffectiveChanges_ReportsNoChanges()
     {
-        var vm = new MainViewModel();
+        var vm = NewVm();
         await vm.SetFolder(_dir);
         // template built from the CURRENT on-disk values so every assignment is a no-op
         var b = vm.SandboxGroups.SelectMany(g => g.Items).OfType<BoolSettingVM>().First(i => i.IsVisible);

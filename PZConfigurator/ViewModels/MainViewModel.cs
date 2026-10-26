@@ -111,6 +111,7 @@ public partial class MainViewModel : ObservableObject
     private int _selectedTabIndex; // Ctrl+Tab cycles tabs; scripts use it too
 
     private readonly Func<Task<bool>>? _confirmDiscard;
+    private readonly string? _userTemplateFolder; // test seam; real %USERPROFILE% fallback when null
     private List<ConfigFile> _files = [];
     private string? _loadedServer;
     private string? _loadedStatus; // restored when search/filter is deactivated
@@ -124,9 +125,14 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private bool _hasConfigLoaded;
 
-    public MainViewModel(Func<Task<bool>>? confirmDiscard = null)
+    public MainViewModel(Func<Task<bool>>? confirmDiscard = null, string? folder = null,
+        string? userTemplateFolder = null)
     {
         _confirmDiscard = confirmDiscard;
+        _userTemplateFolder = userTemplateFolder;
+        // must precede DiscoverAsync: a test folder means the real %USERPROFILE% Zomboid
+        // directory is never touched, even transiently
+        if (folder != null) Folder = folder;
         _ = DiscoverAsync(); // constructor can't await; first load is fire-and-forget
         LoadTemplates();
     }
@@ -138,10 +144,13 @@ public partial class MainViewModel : ObservableObject
         foreach (var t in TemplateLoader.LoadEmbedded(out embeddedErrors))
             Templates.Add(t);
         errors.AddRange(embeddedErrors);
-        foreach (var t in TemplateLoader.LoadUserFolder(TemplateLoader.UserTemplateFolder, errors))
+        var userFolder = _userTemplateFolder ?? TemplateLoader.UserTemplateFolder;
+        foreach (var t in TemplateLoader.LoadUserFolder(userFolder, errors))
             Templates.Add(t);
-        foreach (var t in TemplateLoader.LoadZomboidPresets(TemplateLoader.ZomboidPresetFolder, errors))
-            Templates.Add(t);
+        // hermetic tests pass a userTemplateFolder; the real Zomboid profile is never read there
+        if (_userTemplateFolder == null)
+            foreach (var t in TemplateLoader.LoadZomboidPresets(TemplateLoader.ZomboidPresetFolder, errors))
+                Templates.Add(t);
         if (errors.Count > 0)
             Status = (Status ?? "") + " | template problems: " + string.Join("; ", errors);
     }
