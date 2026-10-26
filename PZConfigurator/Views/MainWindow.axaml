@@ -120,7 +120,9 @@
                                    IsVisible="{Binding HasMatchCategory}" />
                     </StackPanel>
                     <TextBox Grid.Column="1" HorizontalAlignment="Right" Width="320"
-                             Text="{Binding Text}" IsReadOnly="{Binding IsReadOnly}" />
+                             Text="{Binding Text}" IsReadOnly="{Binding IsReadOnly}"
+                             PasswordChar="{Binding SecretChar}"
+                             Classes.revealPasswordButton="{Binding IsSecret}" />
                 </Grid>
             </Border>
         </DataTemplate>

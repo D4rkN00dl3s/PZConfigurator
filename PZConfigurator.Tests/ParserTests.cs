@@ -25,6 +25,23 @@ public class ParserTests
     }
 
     [Fact]
+    public void IniSecretKeys_AreMaskedInVM()
+    {
+        static Setting S(string key) => new()
+            { Key = key, LineIndex = 0, LinePrefix = "", LineSuffix = "", RawValue = "x" };
+
+        // VM constructed directly (no file needed: IsSecret is fixed at load time)
+        static TextSettingVM VM(string key) => new(S(key), null!, () => { });
+
+        Assert.True(VM("Password").IsSecret);
+        Assert.True(VM("RCONPassword").IsSecret);
+        Assert.True(VM("DiscordToken").IsSecret);
+        Assert.True(VM("WebhookAddress").IsSecret);
+        Assert.False(VM("PublicName").IsSecret);
+        Assert.False(VM("MaxPlayers").IsSecret);
+    }
+
+    [Fact]
     public void Ini_ChangeValue_OnlyChangesThatLine()
     {
         var (file, _) = Load("myserver.ini");

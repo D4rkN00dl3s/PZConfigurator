@@ -167,6 +167,8 @@ public partial class NumberSettingVM : SettingVM
 public partial class TextSettingVM : SettingVM
 {
     public bool IsReadOnly { get; }
+    /// <summary>ini secrets (Password, RCONPassword, DiscordToken, WebhookAddress) render masked.</summary>
+    public bool IsSecret { get; }
 
     [ObservableProperty]
     private string _text = "";
@@ -175,8 +177,12 @@ public partial class TextSettingVM : SettingVM
         : base(s, file, markDirty, defaultRaw)
     {
         IsReadOnly = s.ReadOnly;
+        IsSecret = SettingSecrets.Keys.Contains(s.Key);
         _text = s.RawValue;
     }
+
+    // '\0' = no masking; the XAML binds PasswordChar so secret rows render as ●
+    public char SecretChar => IsSecret ? '●' : '\0';
 
     partial void OnTextChanged(string value)
     {

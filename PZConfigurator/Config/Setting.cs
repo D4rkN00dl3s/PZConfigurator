@@ -2,6 +2,15 @@ namespace PZConfigurator.Config;
 
 public enum SettingKind { Bool, Enum, Int, Float, Text }
 
+/// <summary>ini keys whose values must never be shown in clear text on screen.</summary>
+public static class SettingSecrets
+{
+    public static readonly HashSet<string> Keys = new(StringComparer.Ordinal)
+    {
+        "Password", "RCONPassword", "DiscordToken", "WebhookAddress",
+    };
+}
+
 public sealed class EnumOption
 {
     public required int Value { get; init; }
