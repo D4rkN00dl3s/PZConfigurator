@@ -119,6 +119,11 @@ public partial class MainViewModel : ObservableObject
 
     public string? LoadedServer => _loadedServer;
 
+    /// <summary>false while no server config pair is loaded (empty folder, bad selection,
+    /// or load error) — drives the "nothing to display" state and hides the template row.</summary>
+    [ObservableProperty]
+    private bool _hasConfigLoaded;
+
     public MainViewModel(Func<Task<bool>>? confirmDiscard = null)
     {
         _confirmDiscard = confirmDiscard;
@@ -134,6 +139,8 @@ public partial class MainViewModel : ObservableObject
             Templates.Add(t);
         errors.AddRange(embeddedErrors);
         foreach (var t in TemplateLoader.LoadUserFolder(TemplateLoader.UserTemplateFolder, errors))
+            Templates.Add(t);
+        foreach (var t in TemplateLoader.LoadZomboidPresets(TemplateLoader.ZomboidPresetFolder, errors))
             Templates.Add(t);
         if (errors.Count > 0)
             Status = (Status ?? "") + " | template problems: " + string.Join("; ", errors);
@@ -294,6 +301,7 @@ public partial class MainViewModel : ObservableObject
         IsDirty = false;
         Title = "PZConfigurator";
         _loadedServer = SelectedServer;
+        HasConfigLoaded = false;
         if (SelectedServer == null) return;
 
         try
@@ -319,6 +327,7 @@ public partial class MainViewModel : ObservableObject
             Status = $"Loaded {SelectedServer}: "
                 + (ini.Settings.Count() + lua.Settings.Count()) + " settings";
             _loadedStatus = Status;
+            HasConfigLoaded = true;
             ApplyFilter();
         }
         catch (Exception ex)

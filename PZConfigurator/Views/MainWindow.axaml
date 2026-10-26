@@ -204,6 +204,10 @@
                             </ItemsControl.ItemsPanel>
                         </ItemsControl>
                         </ScrollViewer>
+                        <!-- no config loaded (empty folder / load error): say so in the settings pane -->
+                        <TextBlock IsVisible="{Binding !HasConfigLoaded}"
+                                   Text="Nothing to display — no server config files found in the current folder"
+                                   Foreground="#FF9AA0A6" HorizontalAlignment="Center" VerticalAlignment="Center" />
                         <TextBlock IsVisible="{Binding HasNoMatches}" Text="{Binding NoMatchesText}"
                                    HorizontalAlignment="Center" Margin="0,24,0,0" Foreground="#FF9AA0A6" />
                     </Grid>
@@ -227,7 +231,7 @@
                         </ListBox.ItemTemplate>
                     </ListBox>
                     <Grid Grid.Column="1" RowDefinitions="Auto,*" Margin="0,0,10,0">
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,6" IsVisible="{Binding HasConfigLoaded}">
                             <TextBlock Text="Template:" VerticalAlignment="Center" Margin="0,0,6,0" />
                             <ComboBox ItemsSource="{Binding Templates}"
                                       AutomationProperties.AutomationId="TemplateCombo"
@@ -260,6 +264,10 @@
                             </ItemsControl.ItemsPanel>
                         </ItemsControl>
                         </ScrollViewer>
+                        <!-- no config loaded (empty folder / load error): the whole pane is blank; say so -->
+                        <TextBlock Grid.Row="1" IsVisible="{Binding !HasConfigLoaded}"
+                                   Text="Nothing to display — no server config files found in the current folder"
+                                   Foreground="#FF9AA0A6" HorizontalAlignment="Center" VerticalAlignment="Center" />
                         <TextBlock Grid.Row="1" IsVisible="{Binding HasNoMatches}" Text="{Binding NoMatchesText}"
                                    HorizontalAlignment="Center" Margin="0,24,0,0" Foreground="#FF9AA0A6" />
                     </Grid>

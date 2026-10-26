@@ -25,6 +25,49 @@ public static class TemplateLoader
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
             "PZConfigurator", "Templates");
 
+    public static string ZomboidPresetFolder =>
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+            "Zomboid", "Sandbox Presets");
+
+    /// <summary>PZ's own saved sandbox presets (Zomboid\Sandbox Presets\*.cfg). Same key/value
+    /// names as the SandboxVars ("Zombies=4"), comment (#) and option-list (--) lines skipped,
+    /// "Version=" is the cfg-format header, not a setting.</summary>
+    public static List<SandboxTemplate> LoadZomboidPresets(string folder, List<string> errors)
+    {
+        var list = new List<SandboxTemplate>();
+        if (!Directory.Exists(folder)) return list;
+        foreach (var path in Directory.EnumerateFiles(folder, "*.cfg"))
+        {
+            try
+            {
+                var values = new Dictionary<string, string>(StringComparer.Ordinal);
+                foreach (var raw in File.ReadLines(path))
+                {
+                    var line = raw.Trim();
+                    if (line.Length == 0 || line[0] == '#' || line.StartsWith("--", StringComparison.Ordinal))
+                        continue;
+                    var eq = line.IndexOf('=');
+                    if (eq <= 0) continue;
+                    var key = line[..eq].Trim();
+                    if (key.Equals("Version", StringComparison.OrdinalIgnoreCase)) continue;
+                    values[key] = line[(eq + 1)..].Trim();
+                }
+                if (values.Count == 0) continue;
+                list.Add(new SandboxTemplate
+                {
+                    Name = Path.GetFileNameWithoutExtension(path)!,
+                    Description = $"Saved sandbox preset from Zomboid ({values.Count} values)",
+                    Values = values,
+                });
+            }
+            catch (Exception ex)
+            {
+                errors.Add(Path.GetFileName(path) + ": " + ex.Message);
+            }
+        }
+        return list;
+    }
+
     public static List<SandboxTemplate> LoadEmbedded(out List<string> errors)
     {
         var list = new List<SandboxTemplate>();

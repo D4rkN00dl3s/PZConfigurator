@@ -189,4 +189,33 @@ public class ParserTests
 
         Directory.Delete(dir, true);
     }
+
+    [Fact]
+    public void ZomboidCfgPreset_IsParsedAsTemplate()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "pzcfg-test-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        var p = Path.Combine(dir, "save1.cfg");
+        File.WriteAllText(p,
+            "Version=6\n" +
+            "# comment\n" +
+            "    -- 1 = Insane\n" +
+            "Zombies=4\n" +
+            "\n" +
+            "ZombieVoronoiNoise=true\n" +
+            "OtherLootNew=0.8\n");
+
+        var errors = new List<string>();
+        var list = TemplateLoader.LoadZomboidPresets(dir, errors);
+
+        Assert.Empty(errors);
+        var t = Assert.Single(list);
+        Assert.Equal("save1", t.Name);
+        Assert.Equal(3, t.Values.Count); // Version= and comment lines excluded
+        Assert.Equal("4", t.Values["Zombies"]);
+        Assert.Equal("true", t.Values["ZombieVoronoiNoise"]);
+        Assert.Equal("0.8", t.Values["OtherLootNew"]);
+
+        Directory.Delete(dir, true);
+    }
 }
