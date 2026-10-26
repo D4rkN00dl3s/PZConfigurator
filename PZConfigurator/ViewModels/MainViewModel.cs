@@ -355,11 +355,14 @@ public partial class MainViewModel : ObservableObject
             }
         }
 
+        // Apocalypse.json = sandbox values only; ini keys that collide with lua keys (Map,
+        // BloodSplatLifespanDays…) must never be compared against them
+        var d = isIni ? null : defaults;
         foreach (var cat in order.Where(byCategory.ContainsKey))
         {
             target.Add(new SettingGroupVM(cat,
                 byCategory[cat].Select(s => SettingVMFactory.Create(file, s, markDirty,
-                    defaults?.GetValueOrDefault(s.Key))).ToList()));
+                    d?.GetValueOrDefault(s.Key))).ToList()));
         }
     }
 

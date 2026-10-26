@@ -39,6 +39,18 @@ public class TemplateTests : IDisposable
     }
 
     [Fact]
+    public async Task IniSettings_NeverCompareAgainstSandboxDefaults()
+    {
+        var vm = new MainViewModel();
+        await vm.SetFolder(_dir);
+        Assert.Equal("myserver", vm.LoadedServer); // sanity: VM loaded both config files
+
+        var map = vm.IniGroups.SelectMany(g => g.Items).First(i => i.Key == "Map");
+        Assert.False(map.IsNonDefault,
+            "Map=Muldraugh, KY must not be painted blue because of a colliding Sandbox key");
+    }
+
+    [Fact]
     public async Task ApplyTemplate_SetsValues_MarksDirty_WritesOnlyOnSave()
     {
         var vm = new MainViewModel();
