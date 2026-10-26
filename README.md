@@ -55,6 +55,8 @@ sudo chmod -R o+rwX /home/pz/Zomboid/Server # the app must also be able to WRITE
 
 Option A (plain `chmod` on existing files) is applied once and is enough; **Option B needs the `-d` default ACL line above** — without it, files the server creates *after* you run `setfacl` would again be inaccessible to you. If the server ever recreates a config file as `600` anyway, re-run the command or fall back to a **shared group** (`sudo groupadd srvshare; sudo usermod -aG srvshare pz usr; sudo chgrp -R srvshare /home/pz/Zomboid/Server` + `chmod -R g+rwX` — see your distro docs). After that, pick the folder via **Browse…** in the app; `PZConfigurator` never needs to run as root or as the server user.
 
+When saving, the app preserves the file permission bits of each config file (a `640` file stays `640`); file ownership is not preserved — a saved file ends up owned by the user running the app.
+
 Note that execute-only (`--x`) on `/home/pz` and `/home/pz/Zomboid` allows *traversal but not listing*: file managers (Dolphin etc.) and the **Browse…** dialog cannot click through those directories even though the app itself can. Workarounds:
 
 - **Symlink (recommended):** `ln -s /home/pz/Zomboid/Server ~/pz-server`, then Browse to `~/pz-server`.

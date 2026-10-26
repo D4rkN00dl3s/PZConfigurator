@@ -245,6 +245,11 @@ public static partial class ConfigParser
         File.Copy(file.Path, file.Path + ".bak", overwrite: true);
         var tmp = file.Path + ".tmp";
         File.WriteAllText(tmp, text, new UTF8Encoding(file.HasBom));
+        if (!OperatingSystem.IsWindows())
+            // rename installs a fresh inode, so the new file would get umask defaults;
+            // carry the original mode over, but never fail the save over it
+            try { File.SetUnixFileMode(tmp, File.GetUnixFileMode(file.Path)); }
+            catch (Exception) { /* unsupported filesystem etc. */ }
         File.Move(tmp, file.Path, overwrite: true);
         // keep "Render == OriginalText" meaningful: after save the file IS the original
         file.OriginalText = text;

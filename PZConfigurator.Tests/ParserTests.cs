@@ -130,6 +130,30 @@ public class ParserTests
     }
 
     [Fact]
+    public void Save_PreservesUnixFileMode()
+    {
+        if (OperatingSystem.IsWindows()) return; // SetUnixFileMode is a Unix-only API
+
+        var dir = Path.Combine(Path.GetTempPath(), "pzcfg-test-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        var iniPath = Path.Combine(dir, "a.ini");
+        File.WriteAllText(iniPath, "PVP=false\r\n");
+        File.SetUnixFileMode(iniPath, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.GroupRead); // 0640
+
+        var file = ConfigParser.LoadIni(iniPath);
+        file.Update(file.Settings.First(s => s.Key == "PVP"), "true");
+        ConfigParser.Save(file);
+
+        Assert.Equal("PVP=true", File.ReadAllText(iniPath).TrimEnd()); // save actually happened
+        var mode = File.GetUnixFileMode(iniPath) &
+            (UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.GroupRead |
+             UnixFileMode.GroupWrite | UnixFileMode.OtherRead | UnixFileMode.OtherWrite);
+        Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.GroupRead, mode);
+
+        Directory.Delete(dir, true);
+    }
+
+    [Fact]
     public void Save_TwiceWithoutChanges_BackupStillHoldsPreFirstSaveContent()
     {
         var dir = Path.Combine(Path.GetTempPath(), "pzcfg-test-" + Guid.NewGuid().ToString("N"));
