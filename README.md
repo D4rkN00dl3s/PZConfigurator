@@ -13,7 +13,7 @@ Cross-platform desktop GUI for editing **Project Zomboid** server settings (Aval
 
 ## Safety
 
-- Nothing is written until Save; Save writes via temp file + atomic replace, keeping the previous version as `name.ini.bak` / `name_SandboxVars.lua.bak` for rollback.
+- Nothing is written until Save; Save writes via temp file + atomic replace, keeping the previous version as `name.ini.bak` / `name_SandboxVars.lua.bak` for rollback. In addition, every real save snapshots the pre-save content to `name.ini.<timestamp>.bak`; the newest 10 snapshots are kept automatically, so two saves in a row never lose the original.
 - Some settings are only re-read by the server on restart.
 - Unsaved changes are flagged in the title; a confirm dialog appears on close and before switching servers.
 

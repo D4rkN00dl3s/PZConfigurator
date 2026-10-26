@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -234,6 +235,11 @@ public static partial class ConfigParser
         return lines;
     }
 
+    /// <summary>How many timestamped history backups are kept per file.</summary>
+    public const int BackupHistoryCount = 10;
+    /// <summary>Test seam for the timestamp clock; production stays on the real UTC clock.</summary>
+    internal static Func<DateTime> UtcNow = () => DateTime.UtcNow;
+
     public static void Save(ConfigFile file)
     {
         var text = file.Render();
@@ -243,6 +249,7 @@ public static partial class ConfigParser
         if (File.Exists(file.Path) && File.ReadAllText(file.Path) != file.OriginalText)
             throw new ConfigChangedOnDiskException(file.Path);
         File.Copy(file.Path, file.Path + ".bak", overwrite: true);
+        CreateTimestampedBackup(file.Path);
         var tmp = file.Path + ".tmp";
         File.WriteAllText(tmp, text, new UTF8Encoding(file.HasBom));
         if (!OperatingSystem.IsWindows())
@@ -253,5 +260,36 @@ public static partial class ConfigParser
         File.Move(tmp, file.Path, overwrite: true);
         // keep "Render == OriginalText" meaningful: after save the file IS the original
         file.OriginalText = text;
+    }
+
+    /// <summary>Copy the pre-save content to a timestamped history backup, then prune to
+    /// BackupHistoryCount. Best effort: the save must never fail because of history.</summary>
+    static void CreateTimestampedBackup(string path)
+    {
+        try
+        {
+            // e.g. myserver.ini.20261026-153012-417.bak
+            var stamp = UtcNow().ToString("yyyyMMdd-HHmmss-fff", CultureInfo.InvariantCulture);
+            var history = path + "." + stamp + ".bak";
+            // a collision means a save happened in the same millisecond — skip rather than fail
+            if (!File.Exists(history))
+                File.Copy(path, history);
+
+            var dir = Path.GetDirectoryName(path)!;
+            var name = Path.GetFileName(path);
+            var historyRegex = new Regex(
+                "^" + Regex.Escape(name) + @"\.\d{8}-\d{6}-\d{3}\.bak$");
+            // file names sort chronologically, so pruning all but the highest keeps the newest
+            var old = Directory.EnumerateFiles(dir)
+                .Select(System.IO.Path.GetFileName)
+                .Where(f => f != null && historyRegex.IsMatch(f))
+                .OrderByDescending(f => f, StringComparer.Ordinal)
+                .Skip(BackupHistoryCount)
+                .Select(f => System.IO.Path.Combine(dir, f!))
+                .ToList();
+            foreach (var f in old)
+                File.Delete(f);
+        }
+        catch (Exception) { /* history is a luxury; saving must not fail over it */ }
     }
 }

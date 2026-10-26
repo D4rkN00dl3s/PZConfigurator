@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using PZConfigurator.Config;
 using PZConfigurator.ViewModels;
 using Xunit;
@@ -167,6 +168,93 @@ public class ParserTests
              UnixFileMode.GroupWrite | UnixFileMode.OtherRead | UnixFileMode.OtherWrite);
         Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.GroupRead, mode);
 
+        Directory.Delete(dir, true);
+    }
+
+    [Fact]
+    public void Save_History_TwoSavesKeepOldestTimestampedBackup()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "pzcfg-test-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        var iniPath = Path.Combine(dir, "a.ini");
+        File.WriteAllText(iniPath, "PVP=false\r\nMaxPlayers=32\r\n");
+        var originalBytes = File.ReadAllBytes(iniPath);
+        ConfigParser.UtcNow = () => new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc);
+        try
+        {
+            var file = ConfigParser.LoadIni(iniPath);
+            ConfigParser.UtcNow = () => new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc);
+            file.Update(file.Settings.First(s => s.Key == "PVP"), "true");
+            ConfigParser.Save(file);
+            ConfigParser.UtcNow = () => new DateTime(2026, 1, 1, 12, 0, 1, DateTimeKind.Utc);
+            file.Update(file.Settings.First(s => s.Key == "MaxPlayers"), "10");
+            ConfigParser.Save(file);
+
+            var stamps = Directory.GetFiles(dir, "a.ini.*.bak")
+                .Select(Path.GetFileName).OrderBy(n => n).ToList();
+            Assert.Equal(2, stamps.Count);
+            // the OLDEST snapshot is the fixture's pre-save content, byte-identical
+            Assert.Equal(originalBytes, File.ReadAllBytes(Path.Combine(dir, stamps[0])));
+            // newest .bak still holds the intermediate state (invariant unchanged)
+            Assert.Equal("PVP=true\r\nMaxPlayers=32\r\n", File.ReadAllText(iniPath + ".bak"));
+        }
+        finally
+        {
+            ConfigParser.UtcNow = () => DateTime.UtcNow;
+            Directory.Delete(dir, true);
+        }
+    }
+
+    [Fact]
+    public void Save_History_PrunedToTen_OtherFilesUntouched()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "pzcfg-test-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        var iniPath = Path.Combine(dir, "a.ini");
+        File.WriteAllText(iniPath, "PVP=false\r\n");
+        File.WriteAllText(Path.Combine(dir, "a.ini.keepme.bak"), "do not touch");
+        File.WriteAllText(Path.Combine(dir, "notes.txt"), "do not touch");
+        var baseTime = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        try
+        {
+            var file = ConfigParser.LoadIni(iniPath);
+            for (var i = 1; i <= 12; i++)
+            {
+                ConfigParser.UtcNow = () => baseTime.AddSeconds(i);
+                file.Update(file.Settings.First(s => s.Key == "PVP"), $"true{i}");
+                ConfigParser.Save(file);
+            }
+
+            var stamps = Directory.GetFiles(dir, "a.ini.*.bak")
+                .Select(Path.GetFileName)
+                .Where(n => n != null && Regex.IsMatch(n, @"^a\.ini\.\d{8}-\d{6}-\d{3}\.bak$"))
+                .OrderBy(n => n).ToList();
+            Assert.Equal(ConfigParser.BackupHistoryCount, stamps.Count);
+            // the two oldest snapshots were pruned; the .keepme/.txt files survive
+            Assert.DoesNotContain("a.ini.20260101-000001-000.bak", stamps);
+            Assert.Contains("a.ini.keepme.bak", Directory.GetFiles(dir).Select(Path.GetFileName));
+            Assert.Contains("notes.txt", Directory.GetFiles(dir).Select(Path.GetFileName));
+        }
+        finally
+        {
+            ConfigParser.UtcNow = () => DateTime.UtcNow;
+            Directory.Delete(dir, true);
+        }
+    }
+
+    [Fact]
+    public void Save_History_NoOpSaveCreatesNone()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "pzcfg-test-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        var iniPath = Path.Combine(dir, "a.ini");
+        File.WriteAllText(iniPath, "PVP=false\r\n");
+
+        var file = ConfigParser.LoadIni(iniPath);
+        ConfigParser.Save(file); // Render == OriginalText: nothing at all happens
+
+        Assert.DoesNotContain(Directory.GetFiles(dir),
+            static f => f.EndsWith(".bak", StringComparison.Ordinal));
         Directory.Delete(dir, true);
     }
 
