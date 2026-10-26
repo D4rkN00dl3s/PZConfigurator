@@ -118,6 +118,8 @@
                                    ToolTip.Tip="{Binding Tooltip}" />
                         <TextBlock Text="{Binding MatchCategory}" FontSize="11" Foreground="SlateGray"
                                    IsVisible="{Binding HasMatchCategory}" />
+                        <TextBlock Text="{Binding Warning}" FontSize="11" Foreground="Orange" TextWrapping="Wrap"
+                                   IsVisible="{Binding HasWarning}" />
                     </StackPanel>
                     <TextBox Grid.Column="1" HorizontalAlignment="Right" Width="320"
                              Text="{Binding Text}" IsReadOnly="{Binding IsReadOnly}"

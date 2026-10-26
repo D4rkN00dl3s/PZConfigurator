@@ -173,12 +173,19 @@ public partial class TextSettingVM : SettingVM
     [ObservableProperty]
     private string _text = "";
 
+    [ObservableProperty]
+    private string? _warning; // lint message for Mods/WorkshopItems lists; null = clean
+
+    public bool HasWarning => Warning != null;
+    partial void OnWarningChanged(string? value) => OnPropertyChanged(nameof(HasWarning));
+
     public TextSettingVM(Setting s, ConfigFile file, Action markDirty, string? defaultRaw = null)
         : base(s, file, markDirty, defaultRaw)
     {
         IsReadOnly = s.ReadOnly;
         IsSecret = SettingSecrets.Keys.Contains(s.Key);
         _text = s.RawValue;
+        _warning = ModListLint.Check(s.Key, s.RawValue);
     }
 
     // '\0' = no masking; the XAML binds PasswordChar so secret rows render as ●
@@ -187,6 +194,7 @@ public partial class TextSettingVM : SettingVM
     partial void OnTextChanged(string value)
     {
         if (!IsReadOnly) Write(value);
+        Warning = ModListLint.Check(Setting.Key, value);
     }
 }
 
